@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Check, ChevronLeft, X } from "lucide-react";
 import { color, layout, motion as mt } from "@/design/tokens";
@@ -13,35 +13,6 @@ function cx(...parts: (string | false | undefined | null)[]) {
 /* ------------------------------------------------------------------ */
 /* Device chrome                                                        */
 /* ------------------------------------------------------------------ */
-export function StatusBar({ time = layout.statusTime }: { time?: string }) {
-  return (
-    <div
-      className="flex shrink-0 items-center justify-between px-6 text-ink"
-      style={{ height: layout.safeTop }}
-      aria-hidden
-    >
-      <span className="u-num text-[13.5px] font-semibold tracking-tight">{time}</span>
-      <div className="flex items-center gap-1.5 opacity-85">
-        <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor">
-          <rect x="0" y="7" width="3" height="4" rx="1" />
-          <rect x="4.5" y="5" width="3" height="6" rx="1" />
-          <rect x="9" y="2.5" width="3" height="8.5" rx="1" />
-          <rect x="13.5" y="0" width="3" height="11" rx="1" />
-        </svg>
-        <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" strokeWidth="1.6">
-          <path d="M1 4.2a10 10 0 0 1 14 0M3.6 6.7a6.4 6.4 0 0 1 8.8 0" strokeLinecap="round" />
-          <circle cx="8" cy="9.4" r="1.1" fill="currentColor" stroke="none" />
-        </svg>
-        <svg width="25" height="12" viewBox="0 0 25 12">
-          <rect x="0.6" y="0.6" width="20" height="10.8" rx="3.2" fill="none" stroke="currentColor" strokeOpacity="0.45" />
-          <rect x="2.4" y="2.4" width="14" height="7.2" rx="2" fill="currentColor" />
-          <path d="M22.4 4.2v3.6a2 2 0 0 0 0-3.6Z" fill="currentColor" fillOpacity="0.5" />
-        </svg>
-      </div>
-    </div>
-  );
-}
-
 export function HomeIndicator({ className = "" }: { className?: string }) {
   return (
     <div className={cx("pointer-events-none flex justify-center pb-1.5 pt-1", className)} aria-hidden>
@@ -79,7 +50,6 @@ export function AppScreen({ children, className = "" }: { children: ReactNode; c
       className={cx("mx-auto flex min-h-[796px] w-full flex-col bg-paper", className)}
       style={{ maxWidth: layout.appMaxW }}
     >
-      <StatusBar />
       <main className="flex-1 overflow-y-auto no-scrollbar pb-24">{children}</main>
     </div>
   );
@@ -236,6 +206,7 @@ export function Sheet({
   action,
   children,
   footer,
+  elevated = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -244,12 +215,19 @@ export function Sheet({
   action?: { label: string; onClick: () => void; disabled?: boolean };
   children: ReactNode;
   footer?: ReactNode;
+  /** 叠在 FullScreenModal 之上时置 true；仍低于 Alert（z-60） */
+  elevated?: boolean;
 }) {
   const reduce = useReducedMotion();
   return (
     <AnimatePresence>
       {open ? (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+        <div
+          className={cx(
+            "fixed inset-0 flex flex-col justify-end",
+            elevated ? "z-[55]" : "z-50",
+          )}
+        >
           <motion.button
             type="button"
             aria-label="关闭"
@@ -305,6 +283,152 @@ export function Sheet({
             <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar px-5 pb-5">{children}</div>
             {footer ? (
               <div className="shrink-0 border-t border-hair/70 bg-card px-5 pb-7 pt-4">{footer}</div>
+            ) : (
+              <HomeIndicator />
+            )}
+          </motion.div>
+        </div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* FullScreenModal — 自成一体的任务层（对应 iOS fullScreenCover）        */
+/* ------------------------------------------------------------------ */
+
+/** 导航区圆形按钮的配置；label 既做 aria-label 也做 title */
+export type ModalButton = {
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  /** plain = 灵灰底（默认，给关闭）、accent = 蓝底白字（给提交）、danger = 红字 */
+  tone?: "plain" | "accent" | "danger";
+};
+
+const MODAL_BUTTON_TONES = {
+  plain: "bg-fill text-ink-soft hover:bg-fill-deep",
+  accent: "bg-indigo text-white hover:bg-indigo-deep",
+  danger: "bg-danger-tint text-danger",
+} as const;
+
+function ModalCircleButton({ icon, label, onClick, disabled, tone = "plain" }: ModalButton) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      disabled={disabled}
+      className={cx(
+        "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-[transform,background-color,color] duration-200 active:scale-95",
+        MODAL_BUTTON_TONES[tone],
+        "disabled:bg-fill disabled:text-muted/40 disabled:active:scale-100",
+      )}
+    >
+      {icon}
+    </button>
+  );
+}
+
+/**
+ * 全屏弹窗：给「必顶完成或放弃」的自成体任务用（新建 / 编辑）。
+ *
+ * 与 Sheet 的分工：Sheet 是轻量、不离开当前上下文的就地输入；
+ * FullScreenModal 接管整屏，适合字段多、需要专注的表单。
+ * 不要用它做层级浏览（那是 Push 路由的职责）。
+ *
+ * 顶部左右各一枚圆形按钮，中间标题；左侧缺省就是关闭。
+ */
+export function FullScreenModal({
+  open,
+  onClose,
+  title,
+  subtitle,
+  leading,
+  trailing,
+  children,
+  footer,
+  closeLabel = "关闭",
+}: {
+  open: boolean;
+  onClose: () => void;
+  title?: ReactNode;
+  subtitle?: ReactNode;
+  /** 左上角；省略时自动给一枚关闭按钮 */
+  leading?: ModalButton | null;
+  /** 右上角；通常是提交动作 */
+  trailing?: ModalButton | null;
+  children: ReactNode;
+  footer?: ReactNode;
+  closeLabel?: string;
+}) {
+  const reduce = useReducedMotion();
+
+  // Esc 关闭 + 锁住背景滚动，避免弹窗内滚到底时带动身后的页面
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, onClose]);
+
+  const left: ModalButton | null =
+    leading === undefined
+      ? { icon: <X size={18} strokeWidth={2.2} />, label: closeLabel, onClick: onClose }
+      : leading;
+
+  return (
+    <AnimatePresence>
+      {open ? (
+        <div className="fixed inset-0 z-50 flex justify-center pt-3">
+          <motion.div
+            className="u-glass-dark absolute inset-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          />
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label={typeof title === "string" ? title : undefined}
+            initial={reduce ? { opacity: 0 } : { y: "100%" }}
+            animate={reduce ? { opacity: 1 } : { y: 0 }}
+            exit={reduce ? { opacity: 0 } : { y: "100%" }}
+            transition={mt.spring.sheet}
+            className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-t-sheet border-t border-hair bg-paper shadow-sheet"
+            style={{ maxWidth: layout.appMaxW }}
+          >
+            <div
+              className="u-glass z-10 flex shrink-0 items-center gap-3 rounded-t-sheet border-b border-hair/70 px-3"
+              style={{ minHeight: layout.navH + 12 }}
+            >
+              <div className="flex min-w-9 items-center">
+                {left ? <ModalCircleButton {...left} /> : null}
+              </div>
+              <div className="min-w-0 flex-1 text-center">
+                {title ? (
+                  <h2 className="truncate text-[15px] font-semibold text-ink">{title}</h2>
+                ) : null}
+                {subtitle ? <Micro className="mt-0.5 block truncate">{subtitle}</Micro> : null}
+              </div>
+              <div className="flex min-w-9 items-center justify-end">
+                {trailing ? <ModalCircleButton {...trailing} /> : null}
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar">{children}</div>
+
+            {footer ? (
+              <div className="u-glass u-hairline-t shrink-0 px-5 pb-7 pt-4">{footer}</div>
             ) : (
               <HomeIndicator />
             )}

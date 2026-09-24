@@ -1,0 +1,20 @@
+# dependencies
+node_modules/
+
+# next build output
+.next/
+out/
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# env: 连接串与密钥只留在本地
+.env
+.env.local
+.env.*.local
+
+# agent task scratch
+.pi/tasks/
+
+# os
+.DS_Store
+*.log

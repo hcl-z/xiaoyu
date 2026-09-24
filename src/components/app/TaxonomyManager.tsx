@@ -2,11 +2,12 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import {
   Alert,
   Button,
   Caption,
+  FullScreenModal,
   ListRow,
   NavBar,
   Section,
@@ -54,10 +55,26 @@ function usageLabel(item: TaxonomyItem) {
   return item.count > 0 ? `正被 ${item.count} 道菜谱使用` : "当前没有菜谱使用";
 }
 
-export function TaxonomyManager({ kind }: { kind: TaxonomyKind }) {
+/**
+ * 分类 / 标签管理。两种外壳共用同一套清单与编辑逻辑：
+ *   presentation="page"  — 独立路由页（保留给直接访问 / 展示台）
+ *   presentation="modal" — 全屏弹窗，应用内从「我的」打开
+ */
+export function TaxonomyManager({
+  kind,
+  presentation = "page",
+  open = true,
+  onClose,
+}: {
+  kind: TaxonomyKind;
+  presentation?: "page" | "modal";
+  open?: boolean;
+  onClose?: () => void;
+}) {
   const router = useRouter();
   const { categories, tags, loading, addTaxonomy, renameTaxonomy, removeTaxonomy } =
     useTaxonomies();
+  const isModal = presentation === "modal";
 
   const copy = COPY[kind];
   const items = kind === "category" ? categories : tags;
@@ -132,24 +149,12 @@ export function TaxonomyManager({ kind }: { kind: TaxonomyKind }) {
     else setError(res.error ?? "删除失败");
   };
 
-  return (
-    <div className="pb-10">
-      <NavBar
-        variant="compact"
-        title={copy.title}
-        onBack={() => router.push("/profile")}
-        backLabel="我的"
-        trailing={
-          <button
-            type="button"
-            onClick={focusComposer}
-            className="px-2 py-1 text-[15px] font-semibold text-indigo active:opacity-50"
-          >
-            添加
-          </button>
-        }
-      />
+  const close = () => {
+    if (isModal) onClose?.();
+    else router.push("/profile");
+  };
 
+  const body = (
       <div className="flex flex-col gap-6 px-5 pt-5">
         <Section
           title={`全部${copy.label}`}
@@ -242,8 +247,14 @@ export function TaxonomyManager({ kind }: { kind: TaxonomyKind }) {
           <Caption className="block leading-relaxed">{copy.note}</Caption>
         </Section>
       </div>
+  );
 
+  /* 编辑弹层与删除确认：必须作为全屏弹窗的兄弟节点渲染。
+     全屏弹窗用了 framer-motion 的 transform，内部的 fixed 会以它为参系而失效。 */
+  const overlays = (
+    <>
       <Sheet
+        elevated={isModal}
         open={editing !== null}
         onClose={() => setEditing(null)}
         title={`编辑${copy.label}`}
@@ -305,6 +316,60 @@ export function TaxonomyManager({ kind }: { kind: TaxonomyKind }) {
         onCancel={() => setConfirmDelete(false)}
         onConfirm={remove}
       />
+    </>
+  );
+
+  const addButton = (
+    <button
+      type="button"
+      onClick={focusComposer}
+      className="px-2 py-1 text-[15px] font-semibold text-indigo active:opacity-50"
+    >
+      添加
+    </button>
+  );
+
+  /* 全屏弹窗：左上叉号关闭，右上加号聚焦到新增行 */
+  if (isModal) {
+    return (
+      <>
+        <FullScreenModal
+          open={open}
+          onClose={close}
+          title={copy.title}
+          subtitle={!loading && items.length > 0 ? `共 ${items.length} 个` : undefined}
+          leading={{
+            icon: <X size={18} strokeWidth={2.2} />,
+            label: "关闭",
+            onClick: close,
+          }}
+          trailing={{
+            icon: <Plus size={18} strokeWidth={2.4} />,
+            label: `新增${copy.label}`,
+            onClick: focusComposer,
+            tone: "accent",
+          }}
+        >
+          <div className="pb-10">{body}</div>
+        </FullScreenModal>
+        {overlays}
+      </>
+    );
+  }
+
+  return (
+    <div className="pb-10">
+      <NavBar
+        variant="compact"
+        title={copy.title}
+        onBack={close}
+        backLabel="我的"
+        trailing={addButton}
+      />
+
+      {body}
+
+      {overlays}
 
       <div style={{ height: layout.safeBottom }} aria-hidden />
     </div>

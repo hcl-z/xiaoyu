@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, FolderTree, Info, LogOut, Tags, UserRound } from "lucide-react";
+import { FolderTree, Info, LogOut, Tags, UserRound } from "lucide-react";
 import {
   Alert,
   Badge,
@@ -15,68 +15,24 @@ import {
   NavBar,
   Section,
   Stat,
-  Switch,
 } from "@/components/ds";
-import { useCheckins, useRecipes, useStats, useTaxonomies } from "@/lib/use-app-data";
+import { useStats, useTaxonomies } from "@/lib/use-app-data";
+import { useAppModals } from "@/components/app/AppModalProvider";
 import { useSession } from "@/components/app/SessionProvider";
 import { todayISO } from "@/lib/content";
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { openTaxonomy } = useAppModals();
   const { stats, loading } = useStats();
-  const { recipes } = useRecipes();
-  const { checkins } = useCheckins();
   const { categories, tags, loading: taxonomiesLoading } = useTaxonomies();
   const { user, isDemo, signingOut, signOut } = useSession();
   const [confirmLogout, setConfirmLogout] = useState(false);
-  const [remind, setRemind] = useState(true);
-  const [h24, setH24] = useState(false);
   const [about, setAbout] = useState(false);
-  const [exported, setExported] = useState(false);
 
   const heat = useMemo(() => stats.days.map((d) => d.count), [stats.days]);
   const heatDays = useMemo(() => stats.days.map((d) => d.day), [stats.days]);
   const monthActive = stats.totals.activeDays;
-
-  /** 真实可用的 CSV 导出（不是占位入口） */
-  const exportCsv = () => {
-    const rows: string[][] = [
-      ["类型", "日期", "餐次", "名称", "份量", "时间", "分类", "用时(分钟)", "人份"],
-      ...checkins.map((c) => [
-        "打卡",
-        c.day,
-        c.meal,
-        c.title,
-        c.portion,
-        c.time,
-        "",
-        "",
-        "",
-      ]),
-      ...recipes.map((r) => [
-        "菜谱",
-        "",
-        "",
-        r.title,
-        "",
-        "",
-        r.category,
-        String(r.minutes),
-        String(r.servings),
-      ]),
-    ];
-    const csv = rows
-      .map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-    const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `daily-plus-${todayISO()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setExported(true);
-    window.setTimeout(() => setExported(false), 1800);
-  };
 
   return (
     <div className="flex flex-col gap-6 pb-8">
@@ -156,7 +112,7 @@ export default function ProfilePage() {
             subtitle="菜谱库顶部的筛选项"
             value={taxonomiesLoading ? undefined : `${categories.length} 个`}
             accessory="chevron"
-            onClick={() => router.push("/profile/categories")}
+            onClick={() => openTaxonomy("category")}
           />
           <ListRow
             leading={
@@ -168,49 +124,13 @@ export default function ProfilePage() {
             subtitle="标记做法与场景，可多选"
             value={taxonomiesLoading ? undefined : `${tags.length} 个`}
             accessory="chevron"
-            onClick={() => router.push("/profile/tags")}
+            onClick={() => openTaxonomy("tag")}
           />
         </Section>
       </div>
 
       <div className="px-5">
-        <Section title="偏好">
-          <ListRow
-            title="每日提醒"
-            subtitle={remind ? "20:30 提醒记录饮食" : "已关闭"}
-            trailing={<Switch checked={remind} onChange={setRemind} label="每日提醒" />}
-          />
-          <ListRow
-            title="24 小时制"
-            subtitle={h24 ? "13:05" : "1:05 下午"}
-            trailing={<Switch checked={h24} onChange={setH24} label="24 小时制" />}
-          />
-          <ListRow
-            title="打卡模式"
-            value="随心自由记录"
-            accessory="chevron"
-            onClick={() => router.push("/today")}
-          />
-        </Section>
-      </div>
-
-      <div className="px-5">
-        <Section title="数据">
-          <ListRow
-            leading={
-              <span className="flex h-[22px] w-[22px] items-center justify-center text-indigo">
-                <Download size={17} />
-              </span>
-            }
-            title="导出 CSV"
-            subtitle={
-              exported
-                ? "已导出到下载文件夹"
-                : `${checkins.length} 条当日记录 · ${recipes.length} 道菜谱`
-            }
-            value={exported ? "完成" : undefined}
-            onClick={exportCsv}
-          />
+        <Section title="关于">
           <ListRow
             leading={
               <span className="flex h-[22px] w-[22px] items-center justify-center text-indigo">

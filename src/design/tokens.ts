@@ -164,13 +164,11 @@ export const layout = {
   appMaxW: 430,
   gutter: 20,
   sectionGap: 24,
-  safeTop: 44,
   safeBottom: 34,
   navH: 44,
   tabH: 49,
   rowMin: 44,
   tapMin: 44,
-  statusTime: "9:41",
 };
 
 export const icons = {

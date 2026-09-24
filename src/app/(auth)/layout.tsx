@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { HomeIndicator, StatusBar } from "@/components/ds";
+import { HomeIndicator } from "@/components/ds";
 import { layout } from "@/design/tokens";
 
 /** 欢迎 / 登录 / 注册：与应用内相同的设备列外壳，但没有标签栏与打卡入口 */
@@ -18,7 +18,6 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         className="relative flex min-h-dvh w-full flex-col bg-paper lg:shadow-float"
         style={{ maxWidth: layout.appMaxW }}
       >
-        <StatusBar />
         <div
           key={pathname}
           className={`flex flex-1 flex-col ${pushed ? "animate-enter" : "animate-enter-up"}`}

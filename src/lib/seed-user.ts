@@ -11,6 +11,7 @@ import {
   RECIPES,
   SEED_CHECKINS,
   SEED_HISTORY_CHECKINS,
+  SEED_PLANNED_CHECKINS,
   dayOffsetISO,
   todayISO,
 } from "@/lib/content";
@@ -22,12 +23,27 @@ import {
 export async function seedStarterContent(userId: number, opts: { demo?: boolean } = {}) {
   const demo = Boolean(opts.demo);
 
+  /** 演示账号的「上次做于」由种子打卡倒推，保证与历史记录一致 */
+  const lastCookedBySlug = new Map<string, string>();
+  if (demo) {
+    for (const c of SEED_CHECKINS) {
+      if (c.recipeSlug) lastCookedBySlug.set(c.recipeSlug, todayISO());
+    }
+    for (const c of SEED_HISTORY_CHECKINS) {
+      if (!c.recipeSlug) continue;
+      const day = dayOffsetISO(c.daysAgo);
+      const known = lastCookedBySlug.get(c.recipeSlug);
+      if (!known || day > known) lastCookedBySlug.set(c.recipeSlug, day);
+    }
+  }
+
   await db.insert(recipes).values(
     RECIPES.map((r) => ({
       ...r,
       userId,
       cooked: demo ? r.cooked : 0,
       favorite: demo ? r.favorite : false,
+      lastCookedOn: demo ? (lastCookedBySlug.get(r.slug) ?? null) : null,
     })),
   );
 
@@ -49,6 +65,12 @@ export async function seedStarterContent(userId: number, opts: { demo?: boolean 
         ...c,
         userId,
         day: dayOffsetISO(daysAgo),
+      })),
+      ...SEED_PLANNED_CHECKINS.map(({ daysAhead, ...c }) => ({
+        ...c,
+        userId,
+        day: dayOffsetISO(-daysAhead),
+        planned: true,
       })),
     ]);
   }

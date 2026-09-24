@@ -23,7 +23,10 @@ async function readBody(request: Request): Promise<Body | null> {
   return body && typeof body === "object" ? (body as Body) : null;
 }
 
-/** 只接受白名单字段；归属账号永远以服务端解析的当前用户为准 */
+/**
+ * 只接受白名单字段；归属账号永远以服务端解析的当前用户为准。
+ * cooked / lastCookedOn 不在其中：它们由打卡记录派生，见 lib/recipe-stats.ts。
+ */
 function readFields(body: Body) {
   return {
     subtitle: typeof body.subtitle === "string" ? body.subtitle : "",
@@ -33,7 +36,6 @@ function readFields(body: Body) {
     servings: Math.max(1, Number(body.servings) || 2),
     image: typeof body.image === "string" ? body.image : "",
     favorite: Boolean(body.favorite),
-    cooked: Math.max(0, Number(body.cooked) || 0),
     tags: Array.isArray(body.tags)
       ? body.tags.filter((t): t is string => typeof t === "string")
       : [],

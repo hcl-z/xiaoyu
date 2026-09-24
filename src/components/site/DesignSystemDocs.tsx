@@ -7,7 +7,6 @@ import {
   Check,
   ChevronRight,
   Clock,
-  Download,
   Heart,
   Info,
   Pencil,
@@ -15,6 +14,7 @@ import {
   Search,
   Trash2,
   UtensilsCrossed,
+  X,
 } from "lucide-react";
 import {
   ActionRow,
@@ -33,6 +33,7 @@ import {
   EmptyState,
   FabButton,
   FieldRow,
+  FullScreenModal,
   Heatmap,
   HeatmapLegend,
   HomeIndicator,
@@ -54,7 +55,6 @@ import {
   Skeleton,
   Sparkbars,
   Stat,
-  StatusBar,
   Stepper,
   Subhead,
   SuccessOverlay,
@@ -138,6 +138,7 @@ export function DesignSystemDocs() {
   const [selected, setSelected] = useState("轻食");
   const [tab, setTab] = useState("today");
   const [sheet, setSheet] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const [alert, setAlert] = useState(false);
   const [saved, setSaved] = useState(false);
   const [push, setPush] = useState(true);
@@ -444,7 +445,6 @@ export function DesignSystemDocs() {
                     { i: <Trash2 size={17} />, n: "删除" },
                     { i: <Check size={17} />, n: "完成" },
                     { i: <ChevronRight size={17} />, n: "进入" },
-                    { i: <Download size={17} />, n: "导出" },
                     { i: <Info size={17} />, n: "关于" },
                   ].map((ic) => (
                     <div
@@ -682,7 +682,6 @@ export function DesignSystemDocs() {
 
               <Demo title="NavBar · 范式 A/B" note="Large Title 与紧凑导航条">
                 <div className="overflow-hidden bg-paper-deep">
-                  <StatusBar />
                   <NavBar variant="large" largeTitle="今天" subtitle="9 月 22 日 · 星期二" />
                   <div className="px-5 pb-4">
                     <Section>
@@ -745,6 +744,19 @@ export function DesignSystemDocs() {
                       </Caption>
                     ) : null}
                   </div>
+                </div>
+              </Demo>
+
+              <Demo title="FullScreenModal" note="自成体任务的全屏层">
+                <div className="space-y-3 p-4">
+                  <Body tone="muted" className="leading-[1.8]">
+                    顶部左右各一枚圆形按钮、中间标题：左取消（灵灰底）、右提交（蓝底白对勾）。
+                    给「要么完成要么放弃」的表单用，比如新建 / 编辑菜谱；
+                    层级浏览仍用 Push 路由，轻量就地输入用 Sheet。
+                  </Body>
+                  <Button size="sm" onClick={() => setFullscreen(true)}>
+                    打开全屏弹窗
+                  </Button>
                 </div>
               </Demo>
 
@@ -946,6 +958,51 @@ export function DesignSystemDocs() {
         </div>
         <SuccessOverlay open={saved} title="已记录到今天" caption="正餐 · 1 份" />
       </Sheet>
+
+      <FullScreenModal
+        open={fullscreen}
+        onClose={() => setFullscreen(false)}
+        title="新建菜谱"
+        subtitle="名称是必填项"
+        leading={{
+          icon: <X size={18} strokeWidth={2.2} />,
+          label: "取消",
+          onClick: () => setFullscreen(false),
+        }}
+        trailing={{
+          icon: <Check size={18} strokeWidth={2.6} />,
+          label: "完成",
+          onClick: () => setFullscreen(false),
+          tone: "accent",
+        }}
+      >
+        <div className="flex flex-col gap-6 px-5 py-5">
+          <Section title="基本信息">
+            <FieldRow label="名称" align="left">
+              <TextInput value={field} onChange={setField} align="left" />
+            </FieldRow>
+            <FieldRow label="用时">
+              <Stepper value={n} onChange={setN} min={1} suffix=" 分钟" label="用时" />
+            </FieldRow>
+          </Section>
+          <Section title="分类" footer="单选，选中显示蓝色对勾">
+            {["主食", "轻食", "汤羹"].map((c) => (
+              <ListRow
+                key={c}
+                title={c}
+                accessory="check"
+                selected={selected === c}
+                onClick={() => setSelected(c)}
+              />
+            ))}
+          </Section>
+          <Section title="做法">
+            <div className="px-4 py-3">
+              <TextArea value={area} onChange={setArea} placeholder="写下步骤…" />
+            </div>
+          </Section>
+        </div>
+      </FullScreenModal>
 
       <Alert
         open={alert}

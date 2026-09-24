@@ -16,16 +16,19 @@ import {
   Skeleton,
 } from "@/components/ds";
 import { layout } from "@/design/tokens";
+import { useRecipeEditor } from "@/components/app/AppModalProvider";
+import { relativeDayLabel } from "@/lib/content";
 import { useRecipes, useTaxonomies } from "@/lib/use-app-data";
 
 export default function RecipesPage() {
   const router = useRouter();
+  const { openNewRecipe } = useRecipeEditor();
   const { recipes, loading } = useRecipes();
   const { categories } = useTaxonomies();
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState<string>("全部");
 
-  /** 分类来自「我的 › 分类管理」；保留首尾两个固定筛选项 */
+  /** 分类来自「我的 › 分类管理」；另有「全部」与「收藏」筛选项 */
   const filters = useMemo(
     () => ["全部", ...categories.map((c) => c.name), "收藏"],
     [categories],
@@ -36,15 +39,22 @@ export default function RecipesPage() {
 
   const list = useMemo(() => {
     let out = [...recipes];
-    if (activeCat === "收藏") out = out.filter((r) => r.favorite);
-    else if (activeCat !== "全部") out = out.filter((r) => r.category === activeCat);
+    if (activeCat === "收藏") {
+      out = out.filter((r) => r.favorite);
+    } else if (activeCat !== "全部") {
+      out = out.filter((r) => r.category === activeCat);
+    }
     const q = query.trim().toLowerCase();
     if (q) {
       out = out.filter(
         (r) =>
           r.title.toLowerCase().includes(q) ||
           r.subtitle.toLowerCase().includes(q) ||
-          r.tags.some((t) => t.toLowerCase().includes(q)),
+          r.tags.some((t) => t.toLowerCase().includes(q)) ||
+          // 冰箱里有菠菜，搜「菠菜」就应该能找到菜谱
+          r.ingredients.some((g) =>
+            g.items.some((item) => item.name.toLowerCase().includes(q)),
+          ),
       );
     }
     return out.sort((a, b) => b.cooked - a.cooked);
@@ -62,7 +72,7 @@ export default function RecipesPage() {
         largeTitle="菜谱"
         subtitle={`${recipes.length} 道 · 按制作次数排序`}
         trailing={
-          <IconButton label="新建菜谱" onClick={() => router.push("/recipes/new")}>
+          <IconButton label="新建菜谱" onClick={openNewRecipe}>
             <Plus size={24} strokeWidth={2.2} />
           </IconButton>
         }
@@ -72,7 +82,7 @@ export default function RecipesPage() {
         <SearchField
           value={query}
           onChange={setQuery}
-          placeholder="搜索菜名或标签，如「快手」"
+          placeholder="搜菜名、标签或食材，如「菠菜」"
         />
         <div className="no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5">
           {filters.map((c) => (
@@ -106,7 +116,7 @@ export default function RecipesPage() {
               title="没有匹配的菜谱"
               description={
                 query.trim()
-                  ? `没有找到与「${query.trim()}」相关的菜谱。`
+                  ? `没有找到与「${query.trim()}」相关的菜谱，菜名、标签与食材都试过了。`
                   : activeCat === "收藏"
                     ? "还没有收藏任何菜谱。"
                     : "这个分类下还是空的。"
@@ -127,7 +137,7 @@ export default function RecipesPage() {
                   ) : null}
                   <button
                     type="button"
-                    onClick={() => router.push("/recipes/new")}
+                    onClick={openNewRecipe}
                     className="h-8 rounded-control bg-indigo px-3 text-[13px] font-semibold text-white active:bg-indigo-deep"
                   >
                     新建菜谱
@@ -189,7 +199,13 @@ export default function RecipesPage() {
 
           <div className="px-5">
             <Section
-              title={browsing ? "全部菜谱" : `${activeCat === "全部" ? "搜索结果" : activeCat}`}
+              title={
+                browsing
+                  ? "全部菜谱"
+                  : activeCat === "全部"
+                    ? "搜索结果"
+                    : activeCat
+              }
               footer={`共 ${list.length} 道`}
             >
               {rows.map((r) => (
@@ -219,7 +235,7 @@ export default function RecipesPage() {
                       ) : null}
                     </span>
                   }
-                  subtitle={`${r.category} · ${r.minutes} 分钟 · ${r.servings} 人份`}
+                  subtitle={`${r.category} · ${r.minutes} 分钟 · ${relativeDayLabel(r.lastCookedOn)}`}
                   value={
                     <span className="u-num text-caption tabular-nums">
                       {r.cooked ? `${r.cooked} 次` : "未做"}

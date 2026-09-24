@@ -8,6 +8,7 @@ export type RecipeSeed = {
   image: string;
   favorite: boolean;
   cooked: number;
+  lastCookedOn?: string | null;
   tags: string[];
   ingredients: { group: string; items: { name: string; amount: string }[] }[];
   steps: string[];
@@ -253,8 +254,8 @@ export function todayISO(d = new Date()): string {
 }
 
 export const SEED_CHECKINS = [
-  { meal: "轻食", title: "莓果酸奶碗", recipeSlug: "berry-yogurt-bowl", portion: "1 碗", time: "08:12" },
-  { meal: "正餐", title: "番茄牛腩饭", recipeSlug: "tomato-brisket-rice", portion: "1 份", time: "12:40" },
+  { meal: "轻食", title: "莓果酸奶碗", recipeSlug: "berry-yogurt-bowl", portion: "1 碗", time: "08:12", note: "" },
+  { meal: "正餐", title: "番茄牛腩饭", recipeSlug: "tomato-brisket-rice", portion: "1 份", time: "12:40", note: "最后收汁多给了 5 分钟，挂勺刚好" },
 ];
 
 export function dayOffsetISO(daysAgo: number): string {
@@ -263,12 +264,38 @@ export function dayOffsetISO(daysAgo: number): string {
   return todayISO(date);
 }
 
+/** 把“多少天前”转成人读的相对描述，给菜谱详情的「上次做于」用 */
+export function relativeDayLabel(day: string | null | undefined, from = new Date()): string {
+  if (!day) return "还没做过";
+  const diff = daysBetween(day, todayISO(from));
+  if (diff < 0) return "已安排";
+  if (diff === 0) return "今天做过";
+  if (diff === 1) return "昨天做过";
+  if (diff < 7) return `${diff} 天前做过`;
+  if (diff < 30) return `${Math.floor(diff / 7)} 周前做过`;
+  if (diff < 365) return `${Math.floor(diff / 30)} 个月前做过`;
+  return "很久之前做过";
+}
+
+/** 两个 YYYY-MM-DD 之间相差的天数（later - earlier） */
+export function daysBetween(earlier: string, later: string): number {
+  const a = new Date(`${earlier}T12:00:00`).getTime();
+  const b = new Date(`${later}T12:00:00`).getTime();
+  return Math.round((b - a) / 86400000);
+}
+
 export const SEED_HISTORY_CHECKINS = [
-  { daysAgo: 1, meal: "轻食", title: "莓果酸奶碗", recipeSlug: "berry-yogurt-bowl", portion: "1 碗", time: "08:06" },
-  { daysAgo: 1, meal: "正餐", title: "香煎三文鱼配芦笋", recipeSlug: "seared-salmon-asparagus", portion: "1 份", time: "12:28" },
-  { daysAgo: 1, meal: "正餐", title: "虾皮蒸蛋", recipeSlug: "steamed-egg-custard", portion: "1 份", time: "19:04" },
-  { daysAgo: 2, meal: "轻食", title: "莓果酸奶碗", recipeSlug: "berry-yogurt-bowl", portion: "1 碗", time: "08:20" },
-  { daysAgo: 2, meal: "正餐", title: "味噌奶油蘑菇意面", recipeSlug: "miso-mushroom-pasta", portion: "1 份", time: "19:22" },
-  { daysAgo: 3, meal: "正餐", title: "番茄牛腩饭", recipeSlug: "tomato-brisket-rice", portion: "1 份", time: "12:35" },
-  { daysAgo: 3, meal: "轻食", title: "麻油拌菠菜", recipeSlug: "sesame-spinach", portion: "1 份", time: "18:50" },
+  { daysAgo: 1, meal: "轻食", title: "莓果酸奶碗", recipeSlug: "berry-yogurt-bowl", portion: "1 碗", time: "08:06", note: "" },
+  { daysAgo: 1, meal: "正餐", title: "香煎三文鱼配芦笋", recipeSlug: "seared-salmon-asparagus", portion: "1 份", time: "12:28", note: "锅没到位，皮没煎脆；下次多等一分钟" },
+  { daysAgo: 1, meal: "正餐", title: "虾皮蒸蛋", recipeSlug: "steamed-egg-custard", portion: "1 份", time: "19:04", note: "" },
+  { daysAgo: 2, meal: "轻食", title: "莓果酸奶碗", recipeSlug: "berry-yogurt-bowl", portion: "1 碗", time: "08:20", note: "" },
+  { daysAgo: 2, meal: "正餐", title: "味噌奶油蘑菇意面", recipeSlug: "miso-mushroom-pasta", portion: "1 份", time: "19:22", note: "味噌减到半汤匙就够，上次偏咸" },
+  { daysAgo: 3, meal: "正餐", title: "番茄牛腩饭", recipeSlug: "tomato-brisket-rice", portion: "1 份", time: "12:35", note: "" },
+  { daysAgo: 3, meal: "轻食", title: "麻油拌菠菜", recipeSlug: "sesame-spinach", portion: "1 份", time: "18:50", note: "烫 40 秒真的够了，颜色漂亮" },
+];
+
+/** 演示账号的未来用餐计划：让「先安排、当天确认」这条路径一眼可见 */
+export const SEED_PLANNED_CHECKINS = [
+  { daysAhead: 1, meal: "正餐", title: "香煎三文鱼配芦笋", recipeSlug: "seared-salmon-asparagus", portion: "1 份", time: "19:00" },
+  { daysAhead: 2, meal: "正餐", title: "番茄牛腩饭", recipeSlug: "tomato-brisket-rice", portion: "1 份", time: "12:30" },
 ];

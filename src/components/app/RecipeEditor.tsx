@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2 } from "lucide-react";
+import { Check, Plus, Trash2, X } from "lucide-react";
 import {
   Alert,
   Caption,
   Checkmark,
   FieldRow,
+  FullScreenModal,
   IconButton,
   ListRow,
   Micro,
@@ -29,10 +30,30 @@ function withCurrent(options: string[], current: string[]): string[] {
   return [...options, ...extra];
 }
 
-export function RecipeEditor({ mode, recipe }: { mode: "new" | "edit"; recipe?: Recipe }) {
+/**
+ * 菜谱编辑器。两种外壳共用同一份表单与校验：
+ *   presentation="page"  — 独立路由页，紧凑导航条（保留给直接访问 / 展示台）
+ *   presentation="modal" — 全屏弹窗，应用内的默认打开方式
+ */
+export function RecipeEditor({
+  mode,
+  recipe,
+  presentation = "page",
+  open = true,
+  onClose,
+}: {
+  mode: "new" | "edit";
+  recipe?: Recipe;
+  presentation?: "page" | "modal";
+  /** 仅 modal：是否展开 */
+  open?: boolean;
+  /** 仅 modal：关闭回调。保存后传 slug，取消传 null */
+  onClose?: (savedSlug: string | null) => void;
+}) {
   const router = useRouter();
   const { addRecipe, updateRecipe, deleteRecipe } = useRecipes();
   const { categories, tags: tagLibrary, addTaxonomy } = useTaxonomies();
+  const isModal = presentation === "modal";
 
   const [title, setTitle] = useState(recipe?.title ?? "");
   const [subtitle, setSubtitle] = useState(recipe?.subtitle ?? "");
@@ -133,6 +154,12 @@ export function RecipeEditor({ mode, recipe }: { mode: "new" | "edit"; recipe?: 
       mode === "edit" && recipe
         ? await updateRecipe(recipe.slug, draft)
         : await addRecipe(draft);
+
+    if (isModal) {
+      setSaving(false);
+      onClose?.(saved.slug);
+      return;
+    }
     router.replace(`/recipes/${saved.slug}`);
   };
 
@@ -141,36 +168,24 @@ export function RecipeEditor({ mode, recipe }: { mode: "new" | "edit"; recipe?: 
     setConfirmDelete(false);
     setSaving(true);
     await deleteRecipe(recipe.slug);
+    if (isModal) {
+      setSaving(false);
+      // 已删除，回到菜谱库而不是停在不存在的详情页
+      onClose?.(null);
+      router.replace("/recipes");
+      return;
+    }
     router.replace("/recipes");
   };
 
-  return (
-    <div className="pb-10">
-      <NavBar
-        variant="compact"
-        title={mode === "edit" ? "编辑菜谱" : "新建菜谱"}
-        backLabel=""
-        leading={
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="px-2 py-1 text-[17px] text-indigo active:opacity-50"
-          >
-            取消
-          </button>
-        }
-        trailing={
-          <button
-            type="button"
-            onClick={save}
-            disabled={!valid || saving}
-            className="px-2 py-1 text-[17px] font-semibold text-indigo disabled:text-muted/35"
-          >
-            {saving ? "保存中" : "完成"}
-          </button>
-        }
-      />
+  const cancel = () => {
+    if (isModal) onClose?.(null);
+    else router.back();
+  };
 
+  const heading = mode === "edit" ? "编辑菜谱" : "新建菜谱";
+
+  const form = (
       <div className="flex flex-col gap-6 px-5 pt-5">
         <Section title="基本信息" footer={valid ? undefined : "名称是唯一的必填项"}>
           <div className="u-sep flex min-h-11 items-center gap-3 px-4 py-2.5">
@@ -478,14 +493,16 @@ export function RecipeEditor({ mode, recipe }: { mode: "new" | "edit"; recipe?: 
           </Section>
         ) : (
           <Caption className="px-4 text-center">
-            点右上角「完成」保存，之后仍可随时修改
+            {isModal
+              ? "点右上角对勾保存，之后仍可随时修改"
+              : "点右上角「完成」保存，之后仍可随时修改"}
           </Caption>
         )}
 
         {mode === "edit" && recipe ? (
           <div className="px-4">
             <Caption>
-              创建于收藏 {recipe.favorite ? "已开启" : "未开启"} · 累计制作 {recipe.cooked} 次
+              {recipe.favorite ? "已收藏" : "未收藏"} · 累计制作 {recipe.cooked} 次（由打卡记录自动统计）
             </Caption>
           </div>
         ) : null}
@@ -494,15 +511,78 @@ export function RecipeEditor({ mode, recipe }: { mode: "new" | "edit"; recipe?: 
           <Checkmark on={false} />
         </span>
       </div>
+  );
 
-      <Alert
-        open={confirmDelete}
-        title="删除这道菜谱？"
-        message={`「${recipe?.title ?? ""}」将从菜谱库中移除，历史打卡记录会保留。`}
-        confirmLabel="删除"
-        onCancel={() => setConfirmDelete(false)}
-        onConfirm={remove}
+  const deleteAlert = (
+    <Alert
+      open={confirmDelete}
+      title="删除这道菜谱？"
+      message={`「${recipe?.title ?? ""}」将从菜谱库中移除，历史打卡记录会保留。`}
+      confirmLabel="删除"
+      onCancel={() => setConfirmDelete(false)}
+      onConfirm={remove}
+    />
+  );
+
+  /* 全屏弹窗：左上叉号取消，右上对勾完成 */
+  if (isModal) {
+    return (
+      <>
+        <FullScreenModal
+          open={open}
+          onClose={cancel}
+          title={heading}
+          subtitle={valid ? undefined : "名称是必填项"}
+          leading={{
+            icon: <X size={18} strokeWidth={2.2} />,
+            label: "取消",
+            onClick: cancel,
+          }}
+          trailing={{
+            icon: <Check size={18} strokeWidth={2.6} />,
+            label: saving ? "保存中" : "完成",
+            onClick: save,
+            disabled: !valid || saving,
+            tone: "accent",
+          }}
+        >
+          <div className="pb-10">{form}</div>
+        </FullScreenModal>
+        {deleteAlert}
+      </>
+    );
+  }
+
+  return (
+    <div className="pb-10">
+      <NavBar
+        variant="compact"
+        title={heading}
+        backLabel=""
+        leading={
+          <button
+            type="button"
+            onClick={cancel}
+            className="px-2 py-1 text-[17px] text-indigo active:opacity-50"
+          >
+            取消
+          </button>
+        }
+        trailing={
+          <button
+            type="button"
+            onClick={save}
+            disabled={!valid || saving}
+            className="px-2 py-1 text-[17px] font-semibold text-indigo disabled:text-muted/35"
+          >
+            {saving ? "保存中" : "完成"}
+          </button>
+        }
       />
+
+      {form}
+
+      {deleteAlert}
     </div>
   );
 }

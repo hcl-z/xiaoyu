@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { todayISO, type RecipeSeed } from "./content";
 
-export type Recipe = RecipeSeed & { id?: number };
+export type Recipe = RecipeSeed & { id?: number; lastCookedOn?: string | null };
 export type Checkin = {
   id: number;
   day: string;
@@ -12,6 +12,11 @@ export type Checkin = {
   recipeSlug: string | null;
   portion: string;
   time: string;
+  note: string;
+  /** 照片打卡的图 id；null = 菜谱或手输打卡 */
+  photoId: number | null;
+  /** true = 未来的用餐计划，尚未确认吃到 */
+  planned: boolean;
 };
 
 /** Records created in this session, kept in memory so a route change never loses them. */
@@ -72,12 +77,15 @@ export function useRecipes() {
     const initial = window.setTimeout(() => void load(), 0);
     const onChanged = () => void load();
     window.addEventListener("daily:recipes-changed", onChanged);
+    // 打卡会派生菜谱的「做过几次 / 上次做于」，必须跟着刷
+    window.addEventListener("daily:checkins-changed", onChanged);
     const safety = window.setTimeout(() => alive && setLoading(false), 6000);
     return () => {
       alive = false;
       window.clearTimeout(initial);
       window.clearTimeout(safety);
       window.removeEventListener("daily:recipes-changed", onChanged);
+      window.removeEventListener("daily:checkins-changed", onChanged);
     };
   }, [load]);
 
@@ -145,13 +153,25 @@ export function useRecipes() {
 export type Stats = {
   streak: number;
   days: { day: string; count: number }[];
-  totals: { recipes: number; favorites: number; checkins: number; activeDays: number };
+  totals: {
+    recipes: number;
+    favorites: number;
+    checkins: number;
+    activeDays: number;
+    planned: number;
+  };
 };
 
 const EMPTY_STATS: Stats = {
   streak: 0,
   days: [],
-  totals: { recipes: 0, favorites: 0, checkins: 0, activeDays: 0 },
+  totals: {
+    recipes: 0,
+    favorites: 0,
+    checkins: 0,
+    activeDays: 0,
+    planned: 0,
+  },
 };
 
 /** 连续天数 / 28 天热力图 / 总计 —— 全部来自数据库真实聚合 */
@@ -327,10 +347,18 @@ export function useCheckins(day = todayISO()) {
   }, [day, load]);
 
   const addCheckin = useCallback(
-    async (draft: Omit<Checkin, "id" | "time"> & { time?: string }) => {
+    async (draft: Omit<Checkin, "id" | "time" | "note" | "planned" | "photoId"> & {
+      time?: string;
+      note?: string;
+      planned?: boolean;
+      photoId?: number | null;
+    }) => {
       const optimistic: Checkin = {
         id: Date.now(),
         time: draft.time ?? new Date().toTimeString().slice(0, 5),
+        note: draft.note ?? "",
+        planned: draft.planned ?? false,
+        photoId: draft.photoId ?? null,
         ...draft,
       };
       sessionCheckins = [...sessionCheckins, optimistic];
@@ -360,6 +388,35 @@ export function useCheckins(day = todayISO()) {
     [day],
   );
 
+  /** 就地修改一条记录；也用于把计划（planned）确认为已吃 */
+  const patchCheckin = useCallback(
+    async (id: number, patch: Partial<Omit<Checkin, "id">>, recordDay = day) => {
+      sessionCheckins = sessionCheckins.map((c) => (c.id === id ? { ...c, ...patch } : c));
+      if (recordDay === day) {
+        setCheckins((list) => list.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+      }
+      const data = await withTimeout(
+        authedFetch(`/api/checkins?id=${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        }).then((r) => r.json()) as Promise<{ checkin?: Checkin }>,
+      );
+      if (data?.checkin) {
+        const saved = data.checkin;
+        sessionCheckins = sessionCheckins.filter((c) => c.id !== id);
+        if (recordDay === day) {
+          setCheckins((list) => list.map((c) => (c.id === id ? saved : c)));
+        }
+      }
+      window.dispatchEvent(
+        new CustomEvent("daily:checkins-changed", { detail: { day: patch.day ?? recordDay } }),
+      );
+      return data?.checkin;
+    },
+    [day],
+  );
+
   /** 删除一条记录（用于覆盖同一餐次的旧记录） */
   const removeCheckin = useCallback(async (id: number, recordDay = day) => {
     sessionCheckins = sessionCheckins.filter((c) => c.id !== id);
@@ -372,5 +429,88 @@ export function useCheckins(day = todayISO()) {
     );
   }, [day]);
 
-  return { checkins, loading, source, addCheckin, removeCheckin, refresh: load };
+  return { checkins, loading, source, addCheckin, patchCheckin, removeCheckin, refresh: load };
+}
+
+/* ------------------------------------------------------------------ */
+/* 日期区间 / 全量历史 / 单菜谱历史                                */
+/* ------------------------------------------------------------------ */
+
+/** 一个日期区间内的记录，今日页用它拉「接下来的计划」 */
+export function useCheckinRange(from: string, to: string) {
+  const [checkins, setCheckins] = useState<Checkin[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    const data = await withTimeout(
+      authedFetch(
+        `/api/checkins?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+      ).then((r) => r.json()) as Promise<{ checkins?: Checkin[] }>,
+    );
+    if (Array.isArray(data?.checkins)) setCheckins(data.checkins);
+    setLoading(false);
+  }, [from, to]);
+
+  useEffect(() => {
+    const initial = window.setTimeout(() => void load(), 0);
+    const onChanged = () => void load();
+    window.addEventListener("daily:checkins-changed", onChanged);
+    const safety = window.setTimeout(() => setLoading(false), 6000);
+    return () => {
+      window.clearTimeout(initial);
+      window.clearTimeout(safety);
+      window.removeEventListener("daily:checkins-changed", onChanged);
+    };
+  }, [load]);
+
+  return { checkins, loading, refresh: load };
+}
+
+export type RecipeHistory = {
+  cooked: number;
+  lastCookedOn: string | null;
+  history: Checkin[];
+  planned: Checkin[];
+};
+
+const EMPTY_HISTORY: RecipeHistory = {
+  cooked: 0,
+  lastCookedOn: null,
+  history: [],
+  planned: [],
+};
+
+/** 单道菜谱的打卡历史：详情页的「做过的记录」与「历次笔记」 */
+export function useRecipeHistory(slug: string | undefined) {
+  const [data, setData] = useState<RecipeHistory>(EMPTY_HISTORY);
+  const [loading, setLoading] = useState(Boolean(slug));
+
+  const load = useCallback(async () => {
+    if (!slug) {
+      setData(EMPTY_HISTORY);
+      setLoading(false);
+      return;
+    }
+    const res = await withTimeout(
+      authedFetch(`/api/recipes/${encodeURIComponent(slug)}/history`).then((r) =>
+        r.ok ? (r.json() as Promise<RecipeHistory>) : null,
+      ),
+    );
+    setData(res ?? EMPTY_HISTORY);
+    setLoading(false);
+  }, [slug]);
+
+  useEffect(() => {
+    const initial = window.setTimeout(() => void load(), 0);
+    const onChanged = () => void load();
+    window.addEventListener("daily:checkins-changed", onChanged);
+    const safety = window.setTimeout(() => setLoading(false), 6000);
+    return () => {
+      window.clearTimeout(initial);
+      window.clearTimeout(safety);
+      window.removeEventListener("daily:checkins-changed", onChanged);
+    };
+  }, [load]);
+
+  return { ...data, loading, refresh: load };
 }
