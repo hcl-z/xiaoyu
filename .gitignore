@@ -1,9 +1,12 @@
 # dependencies
 node_modules/
+.pnpm-store/
 
-# next build output
+# build output (all workspaces)
 .next/
 out/
+dist/
+build/
 next-env.d.ts
 tsconfig.tsbuildinfo
 
