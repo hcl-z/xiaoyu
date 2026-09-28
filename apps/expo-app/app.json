@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "daily +",
+    "slug": "daily-plus",
+    "version": "1.0.0",
+    "scheme": "dailyplus",
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "experiments": {
+      "tsconfigPaths": true
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "选择打卡照片需要访问你的相册。",
+          "cameraPermission": "拍摄打卡照片需要访问你的相机。"
+        }
+      ],
+      "expo-router"
+    ],
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    }
+  }
+}

@@ -38,10 +38,15 @@ async function readBody(request: Request): Promise<Record<string, unknown>> {
   return body && typeof body === "object" ? (body as Record<string, unknown>) : {};
 }
 
-async function startSession(user: SessionUser, status = 200) {
+/**
+ * 原生客户端（x-daily-client: native）拿不到 httpOnly Cookie，
+ * 需要把令牌带回自己保存；浏览器继续只看 Cookie，令牌不进 JS 可达范围。
+ */
+async function startSession(request: Request, user: SessionUser, status = 200) {
   const { token, expiresAt } = await createSession(user.id);
   await setSessionCookie(token, expiresAt);
-  return NextResponse.json({ user }, { status });
+  const wantsToken = request.headers.get("x-daily-client") === "native";
+  return NextResponse.json(wantsToken ? { user, token } : { user }, { status });
 }
 
 async function register(request: Request) {
@@ -81,7 +86,7 @@ async function register(request: Request) {
     // 起步菜谱只是锦上添花，失败不应阻止用户进入应用
     console.error("seedStarterContent failed", error);
   }
-  return startSession(user, 201);
+  return startSession(request, user, 201);
 }
 
 async function login(request: Request) {
@@ -101,7 +106,7 @@ async function login(request: Request) {
     return fail("邮箱或密码不正确", 401);
   }
   clearFailures(email);
-  return startSession({ id: row.id, email: row.email, name: row.name });
+  return startSession(request, { id: row.id, email: row.email, name: row.name });
 }
 
 async function logout() {
@@ -111,8 +116,8 @@ async function logout() {
   return NextResponse.json({ ok: true });
 }
 
-async function demo() {
-  return startSession(await ensureDemoUser());
+async function demo(request: Request) {
+  return startSession(request, await ensureDemoUser());
 }
 
 export async function GET(_request: Request, { params }: Context) {
@@ -135,7 +140,7 @@ export async function POST(request: Request, { params }: Context) {
       case "logout":
         return await logout();
       case "demo":
-        return await demo();
+        return await demo(request);
       default:
         return fail("Not found", 404);
     }

@@ -110,7 +110,7 @@ export async function invalidateSession(token: string) {
 /** 当前请求的登录用户；同一次服务端渲染内只查一次库 */
 export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   try {
-    const token = (await cookies()).get(SESSION_COOKIE)?.value;
+    const token = await readSessionToken();
     if (!token) return null;
     return await validateSessionToken(token);
   } catch (error) {
@@ -158,8 +158,19 @@ export async function clearSessionCookie() {
   (await cookies()).set(SESSION_COOKIE, "", { ...(await cookieOptions()), maxAge: 0 });
 }
 
-export async function readSessionToken() {
-  return (await cookies()).get(SESSION_COOKIE)?.value ?? null;
+/**
+ * 会话令牌有两个来源，指向同一张 sessions 表：
+ *   1. 浏览器的 httpOnly Cookie —— Web 的默认路径，令牌不进 JS 可达范围；
+ *   2. Authorization: Bearer —— 原生客户端没有 Cookie 罐，自己保存令牌。
+ * Cookie 优先，两者可以并存。
+ */
+export async function readSessionToken(): Promise<string | null> {
+  const cookieToken = (await cookies()).get(SESSION_COOKIE)?.value;
+  if (cookieToken) return cookieToken;
+  const header = (await headers()).get("authorization");
+  if (!header) return null;
+  const match = /^Bearer\s+(.+)$/i.exec(header.trim());
+  return match?.[1]?.trim() || null;
 }
 
 export function unauthorized() {

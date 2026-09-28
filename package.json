@@ -13,7 +13,19 @@
     "start:web": "pnpm --filter @recipe/web start",
     "lint:web": "pnpm --filter @recipe/web lint",
     "typecheck:web": "pnpm --filter @recipe/web typecheck",
+    "dev:expo": "pnpm --filter expo-app start",
+    "ios:expo": "pnpm --filter expo-app ios",
+    "android:expo": "pnpm --filter expo-app android",
+    "lint:expo": "pnpm --filter expo-app lint",
+    "typecheck:expo": "pnpm --filter expo-app typecheck",
+    "format:check:expo": "pnpm --filter expo-app format:check",
     "check": "pnpm run lint && pnpm run typecheck",
-    "check:all": "pnpm -r --if-present lint && pnpm -r --if-present typecheck"
+    "check:all": "pnpm -r --if-present lint && pnpm -r --if-present typecheck",
+    "check:expo": "pnpm --filter expo-app check"
+  },
+  "pnpm": {
+    "overrides": {
+      "lightningcss": "1.30.1"
+    }
   }
 }

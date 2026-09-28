@@ -1,0 +1,566 @@
+/**
+ * 菜谱编辑器：新建与编辑共用同一份表单与校验。
+ * 应用内以全屏弹窗打开，左上叉号取消、右上对勾完成，名称为空时完成置灰。
+ */
+import { useMemo, useState } from 'react';
+import { Pressable, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+
+import { Alert, TaskScreen } from '@/chrome/overlays';
+import { Button, IconButton } from '@/components/button';
+import { Pill, Stepper } from '@/components/controls';
+import { Icon } from '@/components/icon';
+import { FieldRow, TextArea, TextField } from '@/components/inputs';
+import { EmptyState, ListRow, Section, Skeleton } from '@/components/surfaces';
+import { Body, Caption, Micro } from '@/components/text';
+import { useRecipes, useTaxonomies } from '@/data/store';
+import type { Recipe } from '@/data/types';
+
+type Item = { name: string; amount: string };
+type Group = { group: string; items: Item[] };
+
+/** 保证当前值始终可见，即使它已被从分类/标签库中删除 */
+function withCurrent(options: string[], current: string[]): string[] {
+  const extra = current.filter((v) => v && !options.includes(v));
+  return [...options, ...extra];
+}
+
+export function RecipeEditorScreen({ mode }: { mode: 'new' | 'edit' }) {
+  const params = useLocalSearchParams<{ slug?: string }>();
+  const router = useRouter();
+  const { recipes, loading, addRecipe, updateRecipe, deleteRecipe } = useRecipes();
+  const { categories, tags: tagLibrary, addTaxonomy } = useTaxonomies();
+
+  const recipe = mode === 'edit' ? recipes.find((r) => r.slug === params.slug) : undefined;
+  const heading = mode === 'edit' ? '编辑菜谱' : '新建菜谱';
+
+  if (mode === 'edit' && loading && !recipe) {
+    return (
+      <TaskScreen title={heading} onClose={() => router.back()}>
+        <View className="px-5 pt-5" style={{ rowGap: 20 }}>
+          <Skeleton className="h-24 w-full" rounded={18} />
+          <Skeleton className="h-40 w-full" rounded={18} />
+          <Skeleton className="h-32 w-full" rounded={18} />
+        </View>
+      </TaskScreen>
+    );
+  }
+
+  if (mode === 'edit' && !recipe) {
+    return (
+      <TaskScreen title={heading} onClose={() => router.back()}>
+        <View className="px-5 py-10">
+          <Section>
+            <EmptyState
+              icon={<Icon name="book-open" size="xl" tone="accent" />}
+              title="找不到这道菜谱"
+              description="它可能已经被删除。"
+              action={
+                <Button size="sm" onPress={() => router.replace('/recipes')}>
+                  返回菜谱库
+                </Button>
+              }
+            />
+          </Section>
+        </View>
+      </TaskScreen>
+    );
+  }
+
+  return (
+    <RecipeEditorForm
+      // 换目标时重建表单状态，避免把上一道菜的草稿带过来
+      key={recipe?.slug ?? 'new'}
+      mode={mode}
+      recipe={recipe}
+      heading={heading}
+      categories={categories.map((c) => c.name)}
+      tagLibrary={tagLibrary.map((t) => t.name)}
+      addTaxonomy={addTaxonomy}
+      addRecipe={addRecipe}
+      updateRecipe={updateRecipe}
+      deleteRecipe={deleteRecipe}
+      onClose={() => router.back()}
+      onCreated={(slug) => router.replace(`/recipes/${slug}`)}
+      onDeleted={() => router.replace('/recipes')}
+    />
+  );
+}
+
+function RecipeEditorForm({
+  mode,
+  recipe,
+  heading,
+  categories,
+  tagLibrary,
+  addTaxonomy,
+  addRecipe,
+  updateRecipe,
+  deleteRecipe,
+  onClose,
+  onCreated,
+  onDeleted,
+}: {
+  mode: 'new' | 'edit';
+  recipe?: Recipe;
+  heading: string;
+  categories: string[];
+  tagLibrary: string[];
+  addTaxonomy: (kind: 'tag', name: string) => Promise<{ ok: boolean; error?: string }>;
+  addRecipe: (draft: Recipe) => Promise<Recipe>;
+  updateRecipe: (slug: string, draft: Recipe) => Promise<Recipe>;
+  deleteRecipe: (slug: string) => Promise<void>;
+  onClose: () => void;
+  onCreated: (slug: string) => void;
+  onDeleted: () => void;
+}) {
+  const [title, setTitle] = useState(recipe?.title ?? '');
+  const [subtitle, setSubtitle] = useState(recipe?.subtitle ?? '');
+  const [category, setCategory] = useState<string>(recipe?.category ?? '');
+  const [minutes, setMinutes] = useState(recipe?.minutes ?? 20);
+  const [servings, setServings] = useState(recipe?.servings ?? 2);
+  const [tags, setTags] = useState<string[]>(recipe?.tags ?? []);
+  const [groups, setGroups] = useState<Group[]>(
+    recipe?.ingredients.length
+      ? recipe.ingredients.map((g) => ({ group: g.group, items: [...g.items] }))
+      : [{ group: '主料', items: [{ name: '', amount: '' }] }]
+  );
+  const [steps, setSteps] = useState<string[]>(recipe?.steps.length ? [...recipe.steps] : ['']);
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const [composingTag, setComposingTag] = useState(false);
+  const [tagDraft, setTagDraft] = useState('');
+  const [addingTag, setAddingTag] = useState(false);
+  const [tagError, setTagError] = useState('');
+
+  const categoryOptions = useMemo(
+    () => withCurrent(categories, [category]),
+    [categories, category]
+  );
+  /** 新建时若未选择，默认落在分类库的第一项（无副作用，纯派生） */
+  const activeCategory = category || categoryOptions[0] || '';
+  const tagOptions = useMemo(() => withCurrent(tagLibrary, tags), [tagLibrary, tags]);
+  const valid = title.trim().length > 0;
+
+  /** 新建标签：已存在则直接选中，不报错打断录入 */
+  const commitTag = async () => {
+    const value = tagDraft.trim();
+    if (!value || addingTag) return;
+
+    if (tagOptions.includes(value)) {
+      setTags((list) => (list.includes(value) ? list : [...list, value]));
+      setTagDraft('');
+      setComposingTag(false);
+      setTagError('');
+      return;
+    }
+
+    setAddingTag(true);
+    setTagError('');
+    const res = await addTaxonomy('tag', value);
+    setAddingTag(false);
+    if (res.ok) {
+      setTags((list) => (list.includes(value) ? list : [...list, value]));
+      setTagDraft('');
+      setComposingTag(false);
+    } else {
+      setTagError(res.error ?? '添加失败');
+    }
+  };
+
+  const setItem = (gi: number, ii: number, patch: Partial<Item>) =>
+    setGroups((list) =>
+      list.map((g, i) =>
+        i === gi
+          ? { ...g, items: g.items.map((it, j) => (j === ii ? { ...it, ...patch } : it)) }
+          : g
+      )
+    );
+
+  const save = async () => {
+    if (!valid || saving) return;
+    setSaving(true);
+    const draft: Recipe = {
+      slug: recipe?.slug ?? `custom-${Date.now().toString(36)}`,
+      title: title.trim(),
+      subtitle: subtitle.trim(),
+      category: activeCategory,
+      minutes,
+      servings,
+      image: recipe?.image ?? '',
+      favorite: recipe?.favorite ?? false,
+      cooked: recipe?.cooked ?? 0,
+      tags,
+      ingredients: groups
+        .map((g) => ({
+          group: g.group.trim() || '食材',
+          items: g.items
+            .filter((it) => it.name.trim())
+            .map((it) => ({ name: it.name.trim(), amount: it.amount.trim() || '适量' })),
+        }))
+        .filter((g) => g.items.length > 0),
+      steps: steps.map((s) => s.trim()).filter(Boolean),
+    };
+
+    if (mode === 'edit' && recipe) {
+      await updateRecipe(recipe.slug, draft);
+      setSaving(false);
+      onClose();
+      return;
+    }
+    const saved = await addRecipe(draft);
+    setSaving(false);
+    onCreated(saved.slug);
+  };
+
+  const remove = async () => {
+    if (!recipe) return;
+    setConfirmDelete(false);
+    setSaving(true);
+    await deleteRecipe(recipe.slug);
+    setSaving(false);
+    onDeleted();
+  };
+
+  return (
+    <>
+      <TaskScreen
+        title={heading}
+        onClose={onClose}
+        subtitle={valid ? undefined : '名称是必填项'}
+        leading={{ icon: 'x', label: '取消', onPress: onClose }}
+        trailing={{
+          icon: 'check',
+          label: saving ? '保存中' : '完成',
+          onPress: () => void save(),
+          disabled: !valid || saving,
+          tone: 'accent',
+        }}>
+        <View className="px-5 pt-5" style={{ rowGap: 20 }}>
+          <Section title="基本信息" footer={valid ? undefined : '名称是唯一的必填项'}>
+            <FieldRow label="名称" align="left">
+              <TextField
+                value={title}
+                onChange={setTitle}
+                align="left"
+                placeholder="例如：番茄牛腩饭"
+                label="名称"
+                className="flex-1"
+              />
+            </FieldRow>
+            <FieldRow label="备注" align="left">
+              <TextField
+                value={subtitle}
+                onChange={setSubtitle}
+                align="left"
+                placeholder="一句话说明这道菜（可选）"
+                label="备注"
+                className="flex-1"
+              />
+            </FieldRow>
+          </Section>
+
+          <Section title="分类" footer="分类可在「我的 › 分类管理」中增删改">
+            {categoryOptions.map((c) => (
+              <ListRow
+                key={c}
+                title={c}
+                accessory="check"
+                selected={activeCategory === c}
+                onPress={() => setCategory(c)}
+              />
+            ))}
+          </Section>
+
+          <Section title="烹饪">
+            <FieldRow label="用时">
+              <Stepper
+                label="用时"
+                value={minutes}
+                onChange={setMinutes}
+                min={5}
+                max={240}
+                suffix=" 分钟"
+              />
+            </FieldRow>
+            <FieldRow label="份量">
+              <Stepper
+                label="份量"
+                value={servings}
+                onChange={setServings}
+                min={1}
+                max={12}
+                suffix=" 人份"
+              />
+            </FieldRow>
+          </Section>
+
+          <Section
+            title="标签"
+            footer={tagError ? undefined : '可多选 · 新建的标签会同时加入「我的 › 标签管理」'}
+            padded>
+            <View className="flex-row flex-wrap gap-2">
+              {tagOptions.map((t) => (
+                <Pill
+                  key={t}
+                  active={tags.includes(t)}
+                  onPress={() =>
+                    setTags((list) =>
+                      list.includes(t) ? list.filter((x) => x !== t) : [...list, t]
+                    )
+                  }>
+                  {t}
+                </Pill>
+              ))}
+              {!composingTag ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="新建标签"
+                  onPress={() => {
+                    setComposingTag(true);
+                    setTagError('');
+                  }}
+                  className="border-hair h-8 flex-row items-center gap-1.5 rounded-full border border-dashed px-3.5">
+                  <Icon name="plus" size="sm" tone="muted" strokeWidth={2.4} />
+                  <Body tone="muted" size="text-[13px]">
+                    新建标签
+                  </Body>
+                </Pressable>
+              ) : null}
+            </View>
+
+            {composingTag ? (
+              <View className="border-hair bg-paper rounded-control mt-3 flex-row items-center gap-2 border px-3 py-2">
+                <TextField
+                  value={tagDraft}
+                  onChange={(v) => {
+                    setTagDraft(v);
+                    if (tagError) setTagError('');
+                  }}
+                  align="left"
+                  autoFocus
+                  placeholder="标签名，回车即添加"
+                  label="新建标签"
+                  onSubmit={() => void commitTag()}
+                  className="flex-1"
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="取消新建标签"
+                  onPress={() => {
+                    setComposingTag(false);
+                    setTagDraft('');
+                    setTagError('');
+                  }}
+                  hitSlop={6}>
+                  <Body tone="muted" size="text-[13px]">
+                    取消
+                  </Body>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="添加标签"
+                  accessibilityState={{ disabled: !tagDraft.trim() || addingTag }}
+                  disabled={!tagDraft.trim() || addingTag}
+                  onPress={() => void commitTag()}
+                  hitSlop={6}>
+                  <Body
+                    tone={tagDraft.trim() ? 'accent' : 'muted'}
+                    size="text-[15px]"
+                    weight="font-semibold">
+                    {addingTag ? '添加中' : '添加'}
+                  </Body>
+                </Pressable>
+              </View>
+            ) : null}
+
+            {tagError ? (
+              <View className="mt-2">
+                <Caption tone="danger" className="leading-relaxed">
+                  {tagError}
+                </Caption>
+              </View>
+            ) : null}
+          </Section>
+
+          <View style={{ rowGap: 20 }}>
+            {groups.map((group, gi) => (
+              <Section
+                key={`${group.group}-${gi}`}
+                title={
+                  <View className="flex-row items-center gap-2">
+                    <Micro>{group.group || '食材'}</Micro>
+                    {groups.length > 1 ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="删除分组"
+                        onPress={() => setGroups((list) => list.filter((_, i) => i !== gi))}
+                        hitSlop={6}>
+                        <Body tone="accent" size="text-[11px]" weight="font-medium">
+                          删除分组
+                        </Body>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                }>
+                <FieldRow label="分组名" align="left">
+                  <TextField
+                    value={group.group}
+                    onChange={(v) =>
+                      setGroups((list) => list.map((g, i) => (i === gi ? { ...g, group: v } : g)))
+                    }
+                    align="left"
+                    placeholder="主料 / 调味"
+                    label="分组名"
+                    className="flex-1"
+                  />
+                </FieldRow>
+
+                {group.items.map((item, ii) => (
+                  <View key={ii} className="flex-row items-center gap-2 px-4 py-2">
+                    <TextField
+                      value={item.name}
+                      onChange={(v) => setItem(gi, ii, { name: v })}
+                      align="left"
+                      placeholder="食材"
+                      label="食材"
+                      className="flex-1"
+                    />
+                    <View className="bg-hair h-5 w-px" />
+                    <View style={{ width: 88 }}>
+                      <TextField
+                        value={item.amount}
+                        onChange={(v) => setItem(gi, ii, { amount: v })}
+                        align="right"
+                        placeholder="用量"
+                        label="用量"
+                      />
+                    </View>
+                    <IconButton
+                      name="trash-2"
+                      label="删除该食材"
+                      size="sm"
+                      variant="fill"
+                      onPress={() =>
+                        setGroups((list) =>
+                          list.map((g, i) =>
+                            i === gi ? { ...g, items: g.items.filter((_, j) => j !== ii) } : g
+                          )
+                        )
+                      }
+                    />
+                  </View>
+                ))}
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="添加食材"
+                  onPress={() =>
+                    setGroups((list) =>
+                      list.map((g, i) =>
+                        i === gi ? { ...g, items: [...g.items, { name: '', amount: '' }] } : g
+                      )
+                    )
+                  }
+                  className="active:bg-tint/70 min-h-11 w-full flex-row items-center gap-2 px-4 py-3">
+                  <Icon name="plus" size="md" tone="accent" strokeWidth={2.4} />
+                  <Body tone="accent">添加食材</Body>
+                </Pressable>
+              </Section>
+            ))}
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="添加食材分组"
+              onPress={() =>
+                setGroups((list) => [
+                  ...list,
+                  {
+                    group: list.length === 1 ? '调味' : `分组 ${list.length + 1}`,
+                    items: [{ name: '', amount: '' }],
+                  },
+                ])
+              }
+              className="self-start px-4">
+              <Body tone="accent" size="text-[15px]">
+                + 添加食材分组
+              </Body>
+            </Pressable>
+          </View>
+
+          <Section title="步骤" footer="每行一步，详情页会自动编号">
+            {steps.map((step, i) => (
+              <View key={i} className="flex-row items-start gap-3 px-4 py-2.5">
+                <View className="bg-fill mt-1.5 h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full">
+                  <Body tabular size="text-[12px]" weight="font-bold" tone="soft">
+                    {String(i + 1)}
+                  </Body>
+                </View>
+                <View className="min-w-0 flex-1">
+                  <TextArea
+                    value={step}
+                    onChange={(v) => setSteps((list) => list.map((s, j) => (j === i ? v : s)))}
+                    rows={step.length > 34 ? 2 : 1}
+                    label={`第 ${i + 1} 步`}
+                    placeholder="这一步做什么？"
+                  />
+                </View>
+                {steps.length > 1 ? (
+                  <IconButton
+                    name="trash-2"
+                    label={`删除第 ${i + 1} 步`}
+                    size="sm"
+                    variant="fill"
+                    onPress={() => setSteps((list) => list.filter((_, j) => j !== i))}
+                  />
+                ) : null}
+              </View>
+            ))}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="添加步骤"
+              onPress={() => setSteps((list) => [...list, ''])}
+              className="active:bg-tint/70 min-h-11 w-full flex-row items-center gap-2 px-4 py-3">
+              <Icon name="plus" size="md" tone="accent" strokeWidth={2.4} />
+              <Body tone="accent">添加步骤</Body>
+            </Pressable>
+          </Section>
+
+          {mode === 'edit' ? (
+            <Section>
+              <ListRow
+                leading={
+                  <View className="h-[22px] w-[22px] items-center justify-center">
+                    <Icon name="trash-2" size="md" tone="danger" />
+                  </View>
+                }
+                title="删除这道菜谱"
+                destructive
+                onPress={() => setConfirmDelete(true)}
+              />
+            </Section>
+          ) : (
+            <Caption className="text-center">点右上角对勾保存，之后仍可随时修改</Caption>
+          )}
+
+          {mode === 'edit' && recipe ? (
+            <Caption>
+              {recipe.favorite ? '已收藏' : '未收藏'} · 累计制作 {recipe.cooked}{' '}
+              次（由打卡记录自动统计）
+            </Caption>
+          ) : null}
+        </View>
+      </TaskScreen>
+
+      <Alert
+        open={confirmDelete}
+        title="删除这道菜谱？"
+        message={`「${recipe?.title ?? ''}」将从菜谱库中移除，历史打卡记录会保留。`}
+        confirmLabel="删除"
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={() => void remove()}
+      />
+    </>
+  );
+}
