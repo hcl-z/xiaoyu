@@ -28,6 +28,33 @@ function withCurrent(options: string[], current: string[]): string[] {
   return [...options, ...extra];
 }
 
+/**
+ * 表单快照：进来时的样子和此刻的样子都按同一套规则整理，
+ * 再比字符串——用来判断关闭前要不要拦一下。
+ */
+function snapshot(v: {
+  title: string;
+  subtitle: string;
+  category: string;
+  minutes: number;
+  tags: string[];
+  groups: Group[];
+  steps: string[];
+}) {
+  return JSON.stringify([
+    v.title.trim(),
+    v.subtitle.trim(),
+    v.category,
+    v.minutes,
+    v.tags,
+    v.groups.map((g) => ({
+      group: g.group.trim(),
+      items: g.items.map((item) => ({ name: item.name.trim(), amount: item.amount.trim() })),
+    })),
+    v.steps.map((step) => step.trim()),
+  ]);
+}
+
 export function RecipeEditorScreen({ mode }: { mode: 'new' | 'edit' }) {
   const params = useLocalSearchParams<{ slug?: string }>();
   const router = useRouter();
@@ -133,6 +160,7 @@ function RecipeEditorForm({
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<SaveResult | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   const [composingTag, setComposingTag] = useState(false);
   const [tagDraft, setTagDraft] = useState('');
@@ -147,6 +175,30 @@ function RecipeEditorForm({
   const activeCategory = category || categoryOptions[0] || '';
   const tagOptions = useMemo(() => withCurrent(tagLibrary, tags), [tagLibrary, tags]);
   const valid = title.trim().length > 0;
+
+  /** 进来时的样子；只有它和此刻不同，关闭才需要问一句 */
+  const base = useMemo(
+    () =>
+      snapshot({
+        title: recipe?.title ?? '',
+        subtitle: recipe?.subtitle ?? '',
+        category: recipe?.category ?? '',
+        minutes: recipe?.minutes ?? 20,
+        tags: recipe?.tags ?? [],
+        groups: recipe?.ingredients.length
+          ? recipe.ingredients.map((g) => ({ group: g.group, items: [...g.items] }))
+          : [{ group: '主料', items: [{ name: '', amount: '' }] }],
+        steps: recipe?.steps.length ? [...recipe.steps] : [''],
+      }),
+    [recipe]
+  );
+  const dirty = snapshot({ title, subtitle, category, minutes, tags, groups, steps }) !== base;
+
+  /** 关闭前的最后一道闸：草稿没保存就退出，先让人知道 */
+  const requestClose = () => {
+    if (dirty && result?.tone !== 'success') setConfirmDiscard(true);
+    else onClose();
+  };
 
   /** 新建标签：已存在则直接选中，不报错打断录入 */
   const commitTag = async () => {
@@ -240,9 +292,9 @@ function RecipeEditorForm({
     <>
       <TaskScreen
         title={heading}
-        onClose={onClose}
+        onClose={requestClose}
         subtitle={valid ? undefined : '名称是必填项'}
-        leading={{ icon: 'x', label: '取消', onPress: onClose }}
+        leading={{ icon: 'x', label: '取消', onPress: requestClose }}
         trailing={{
           icon: 'check',
           label: saving ? '保存中' : '完成',
@@ -570,6 +622,19 @@ function RecipeEditorForm({
         confirmLabel="删除"
         onCancel={() => setConfirmDelete(false)}
         onConfirm={() => void remove()}
+      />
+
+      <Alert
+        open={confirmDiscard}
+        title="放弃这次修改？"
+        message="还没保存，关掉之后填过的内容就没了。"
+        cancelLabel="继续编辑"
+        confirmLabel="放弃"
+        onCancel={() => setConfirmDiscard(false)}
+        onConfirm={() => {
+          setConfirmDiscard(false);
+          onClose();
+        }}
       />
     </>
   );
