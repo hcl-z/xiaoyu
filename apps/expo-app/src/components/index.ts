@@ -9,5 +9,6 @@ export * from './text';
 export * from './button';
 export * from './controls';
 export * from './inputs';
+export * from './remote-image';
 export * from './surfaces';
 export * from './data';

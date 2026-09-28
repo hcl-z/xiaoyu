@@ -65,6 +65,14 @@ function mergeCheckins(day: string, fromServer: Checkin[]): Checkin[] {
   return [...extra, ...fromServer].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 }
 
+/**
+ * 写入菜谱的结果。
+ * 失败时仍然把乐观值带回去（界面照常显示，离线也不至于丢草稿），
+ * 但把服务端的错误一并交给调用方，让它决定要不要提示——否则保存失败
+ * 会安静地关掉编辑器，用户以为存下了。
+ */
+export type RecipeSave = { recipe: Recipe; error?: string };
+
 /* ------------------------------------------------------------------ */
 /* 菜谱                                                                */
 /* ------------------------------------------------------------------ */
@@ -94,7 +102,7 @@ export function useRecipes() {
     if (event.type === 'recipes' || event.type === 'checkins') void load();
   });
 
-  const addRecipe = useCallback(async (draft: Recipe) => {
+  const addRecipe = useCallback(async (draft: Recipe): Promise<RecipeSave> => {
     sessionRecipes = [draft, ...sessionRecipes.filter((r) => r.slug !== draft.slug)];
     setRecipes((list) => [draft, ...list.filter((r) => r.slug !== draft.slug)]);
     const res = await apiPost<{ recipe?: Recipe }>('/api/recipes', draft);
@@ -104,10 +112,10 @@ export function useRecipes() {
       setRecipes((list) => list.map((r) => (r.slug === draft.slug ? saved : r)));
     }
     emitDataEvent({ type: 'recipes' });
-    return saved ?? draft;
+    return { recipe: saved ?? draft, error: res.ok ? undefined : res.error };
   }, []);
 
-  const updateRecipe = useCallback(async (slug: string, draft: Recipe) => {
+  const updateRecipe = useCallback(async (slug: string, draft: Recipe): Promise<RecipeSave> => {
     const optimistic: Recipe = { ...draft, slug };
     sessionRecipes = [optimistic, ...sessionRecipes.filter((r) => r.slug !== slug)];
     setRecipes((list) => list.map((r) => (r.slug === slug ? optimistic : r)));
@@ -119,7 +127,7 @@ export function useRecipes() {
     sessionRecipes = sessionRecipes.filter((r) => r.slug !== slug);
     setRecipes((list) => list.map((r) => (r.slug === slug ? saved : r)));
     emitDataEvent({ type: 'recipes' });
-    return saved;
+    return { recipe: saved, error: res.ok ? undefined : res.error };
   }, []);
 
   const deleteRecipe = useCallback(async (slug: string) => {

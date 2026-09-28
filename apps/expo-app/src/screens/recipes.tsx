@@ -3,7 +3,7 @@
  * 大图只在默认浏览态出现；一旦筛选，结果平铺，避免首个结果被莫名放大。
  */
 import { useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { NavBar } from '@/chrome';
@@ -11,6 +11,7 @@ import { Icon } from '@/components/icon';
 import { IconButton } from '@/components/button';
 import { Pill } from '@/components/controls';
 import { SearchField } from '@/components/inputs';
+import { RemoteImage } from '@/components/remote-image';
 import { EmptyState, ListRow, Section, Skeleton } from '@/components/surfaces';
 import { Body, Caption, Micro, Title } from '@/components/text';
 import { resolveImageUrl } from '@/data/client';
@@ -203,7 +204,6 @@ export function RecipesScreen() {
 }
 
 function FeaturedCard({ recipe, onPress }: { recipe: Recipe; onPress: () => void }) {
-  const uri = resolveImageUrl(recipe.image);
   return (
     <Pressable
       accessibilityRole="button"
@@ -211,13 +211,11 @@ function FeaturedCard({ recipe, onPress }: { recipe: Recipe; onPress: () => void
       onPress={onPress}
       className="rounded-group h-44 w-full overflow-hidden active:opacity-90"
       style={elevationStyle.card}>
-      {uri ? (
-        <Image source={{ uri }} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
-      ) : (
-        <View className="bg-tint h-full w-full items-center justify-center">
-          <Icon name="book-open" size="xl" tone="accent" />
-        </View>
-      )}
+      <RemoteImage
+        uri={resolveImageUrl(recipe.image)}
+        style={{ width: '100%', height: '100%' }}
+        placeholder={<Icon name="book-open" size="xl" tone="accent" />}
+      />
       {/* Web 用自下而上的黑色渐变；原生用三层递进的半透明面近似 */}
       <View className="absolute inset-0" style={{ backgroundColor: 'rgba(0,0,0,0.16)' }} />
       <View
@@ -259,21 +257,11 @@ function Fact({ icon, text }: { icon: 'clock'; text: string }) {
 }
 
 export function RecipeThumb({ recipe, size }: { recipe: Recipe; size: number }) {
-  const uri = resolveImageUrl(recipe.image);
-  if (uri) {
-    return (
-      <Image
-        source={{ uri }}
-        resizeMode="cover"
-        style={{ width: size, height: size, borderRadius: 14 }}
-      />
-    );
-  }
   return (
-    <View
-      className="bg-tint rounded-thumb items-center justify-center"
-      style={{ width: size, height: size }}>
-      <Icon name="book-open" size={size >= 48 ? 'md' : 'sm'} tone="accent" />
-    </View>
+    <RemoteImage
+      uri={resolveImageUrl(recipe.image)}
+      style={{ width: size, height: size, borderRadius: 14 }}
+      placeholder={<Icon name="book-open" size={size >= 48 ? 'md' : 'sm'} tone="accent" />}
+    />
   );
 }

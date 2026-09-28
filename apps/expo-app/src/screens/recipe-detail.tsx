@@ -3,7 +3,7 @@
  * 食材可逐条勾选，记录页聚合这道菜的每一次打卡与历次笔记。
  */
 import { useMemo, useState } from 'react';
-import { Image, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,11 +14,12 @@ import { useCheckinSheet } from '@/chrome/checkin';
 import { Button, IconButton } from '@/components/button';
 import { CheckCircle, Segmented } from '@/components/controls';
 import { Icon } from '@/components/icon';
+import { RemoteImage } from '@/components/remote-image';
 import { Badge, EmptyState, ListRow, Section, Skeleton } from '@/components/surfaces';
 import { Body, Caption, Micro, Title } from '@/components/text';
 import { resolveImageUrl } from '@/data/client';
 import { useRecipeHistory, useRecipes } from '@/data/store';
-import { dayLabel, relativeDayLabel } from '@/domain/date';
+import { dayLabel, relativeDayLabel, todayISO } from '@/domain/date';
 import { useFadeSwap } from '@/motion';
 
 type Tab = 'ing' | 'step' | 'log';
@@ -38,6 +39,19 @@ export function RecipeDetailScreen() {
   const [checked, setChecked] = useState<number[]>([]);
 
   const flat = useMemo(() => (recipe ? recipe.ingredients.flatMap((g) => g.items) : []), [recipe]);
+  /**
+   * 只有还没到的安排才叫「已安排」。
+   * 过期没确认的计划本来就还在那一天的时间轴上，不该继续以「已安排」的身份
+   * 挂在详情页，更不该把日期更早的那条当成「下一次」。放在提前 return 之前，
+   * 免得 hook 顺序随渲染分支变化。
+   */
+  const upcoming = useMemo(
+    () =>
+      history.planned
+        .filter((p) => p.day >= todayISO())
+        .sort((a, b) => a.day.localeCompare(b.day) || a.time.localeCompare(b.time)),
+    [history.planned]
+  );
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
@@ -101,17 +115,11 @@ export function RecipeDetailScreen() {
         {/* 范式 B：图片上的透明紧凑导航条 */}
         <View>
           <View className="bg-fill h-60 w-full">
-            {imageUri ? (
-              <Image
-                source={{ uri: imageUri }}
-                resizeMode="cover"
-                style={{ width: '100%', height: '100%' }}
-              />
-            ) : (
-              <View className="bg-tint h-full w-full items-center justify-center">
-                <Icon name="book-open" size="xl" tone="accent" />
-              </View>
-            )}
+            <RemoteImage
+              uri={imageUri}
+              style={{ width: '100%', height: '100%' }}
+              placeholder={<Icon name="book-open" size="xl" tone="accent" />}
+            />
           </View>
           <View className="absolute top-0 right-0 left-0" style={{ paddingTop: insets.top }}>
             <NavBar
@@ -172,9 +180,9 @@ export function RecipeDetailScreen() {
             </View>
             <View className="border-hair mt-4 flex-row items-center justify-between gap-3 border-t pt-3.5">
               <Micro>{relativeDayLabel(recipe.lastCookedOn)}</Micro>
-              {history.planned.length > 0 ? (
+              {upcoming.length > 0 ? (
                 <Badge tone="lake">
-                  {`已安排 ${dayLabel(history.planned[0].day).replace(' · ', ' ')}`}
+                  {`已安排 ${dayLabel(upcoming[0].day).replace(' · ', ' ')}`}
                 </Badge>
               ) : null}
             </View>
@@ -293,9 +301,9 @@ export function RecipeDetailScreen() {
             ) : (
               /* 记录页：做过的每一次，以及历次笔记。全部来自打卡数据 */
               <View style={{ rowGap: 20 }}>
-                {history.planned.length > 0 ? (
+                {upcoming.length > 0 ? (
                   <Section title="已安排" footer="到那天在「今日」确认，就计入制作次数">
-                    {history.planned.map((item) => (
+                    {upcoming.map((item) => (
                       <ListRow
                         key={item.id}
                         leading={

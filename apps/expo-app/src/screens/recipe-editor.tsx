@@ -6,15 +6,18 @@ import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import { Alert, TaskScreen } from '@/chrome/overlays';
+import { Alert, SuccessOverlay, TaskScreen } from '@/chrome/overlays';
 import { Button, IconButton } from '@/components/button';
 import { Pill, Stepper } from '@/components/controls';
 import { Icon } from '@/components/icon';
 import { FieldRow, TextArea, TextField } from '@/components/inputs';
 import { EmptyState, ListRow, Section, Skeleton } from '@/components/surfaces';
 import { Body, Caption, Micro } from '@/components/text';
-import { useRecipes, useTaxonomies } from '@/data/store';
+import { useRecipes, useTaxonomies, type RecipeSave } from '@/data/store';
 import type { Recipe } from '@/data/types';
+
+/** 保存结果的显式状态：写失败要看得见，也要能原地重试 */
+type SaveResult = { tone: 'success' | 'failure'; title: string; caption?: string };
 
 type Item = { name: string; amount: string };
 type Group = { group: string; items: Item[] };
@@ -107,8 +110,8 @@ function RecipeEditorForm({
   categories: string[];
   tagLibrary: string[];
   addTaxonomy: (kind: 'tag', name: string) => Promise<{ ok: boolean; error?: string }>;
-  addRecipe: (draft: Recipe) => Promise<Recipe>;
-  updateRecipe: (slug: string, draft: Recipe) => Promise<Recipe>;
+  addRecipe: (draft: Recipe) => Promise<RecipeSave>;
+  updateRecipe: (slug: string, draft: Recipe) => Promise<RecipeSave>;
   deleteRecipe: (slug: string) => Promise<void>;
   onClose: () => void;
   onCreated: (slug: string) => void;
@@ -128,6 +131,7 @@ function RecipeEditorForm({
   );
   const [steps, setSteps] = useState<string[]>(recipe?.steps.length ? [...recipe.steps] : ['']);
   const [saving, setSaving] = useState(false);
+  const [result, setResult] = useState<SaveResult | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const [composingTag, setComposingTag] = useState(false);
@@ -204,15 +208,23 @@ function RecipeEditorForm({
       steps: steps.map((s) => s.trim()).filter(Boolean),
     };
 
-    if (mode === 'edit' && recipe) {
-      await updateRecipe(recipe.slug, draft);
-      setSaving(false);
-      onClose();
+    const res =
+      mode === 'edit' && recipe ? await updateRecipe(recipe.slug, draft) : await addRecipe(draft);
+    setSaving(false);
+
+    /** 没存下就停在原地，草稿都还在，改完再点一次即可 */
+    if (res.error) {
+      setResult({ tone: 'failure', title: '保存失败', caption: res.error });
+      setTimeout(() => setResult(null), 1800);
       return;
     }
-    const saved = await addRecipe(draft);
-    setSaving(false);
-    onCreated(saved.slug);
+
+    setResult({ tone: 'success', title: mode === 'edit' ? '已保存' : '已新建' });
+    setTimeout(() => {
+      setResult(null);
+      if (mode === 'edit' && recipe) onClose();
+      else onCreated(res.recipe.slug);
+    }, 700);
   };
 
   const remove = async () => {
@@ -235,7 +247,7 @@ function RecipeEditorForm({
           icon: 'check',
           label: saving ? '保存中' : '完成',
           onPress: () => void save(),
-          disabled: !valid || saving,
+          disabled: !valid || saving || result !== null,
           tone: 'accent',
         }}>
         <View className="px-5 pt-5" style={{ rowGap: 20 }}>
@@ -543,6 +555,13 @@ function RecipeEditorForm({
           ) : null}
         </View>
       </TaskScreen>
+
+      <SuccessOverlay
+        open={result !== null}
+        tone={result?.tone ?? 'success'}
+        title={result?.title ?? ''}
+        caption={result?.caption}
+      />
 
       <Alert
         open={confirmDelete}
