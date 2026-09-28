@@ -2,7 +2,7 @@
  * 照片打卡 —— 独立整页层，不引用设计系统的表单组件。
  *
  * 整个弹层只有一张拍立得卡片：左上角关闭、右上角保存。
- * 餐次由调用方按时间自动推断，界面上不再让用户选。
+ * 保存结果与打卡弹层同一套语义：成功打勾，失败给叉并允许原地重试。
  */
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Modal, Pressable, TextInput, View } from 'react-native';
@@ -10,6 +10,7 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
+  withSequence,
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
@@ -33,6 +34,7 @@ type PhotoCardProps = {
   busy: boolean;
   error: string;
   saved: boolean;
+  failed: boolean;
   canSave: boolean;
   onClose: () => void;
   onPick: () => void;
@@ -75,6 +77,7 @@ function PhotoCard({
   busy,
   error,
   saved,
+  failed,
   canSave,
   onClose,
   onPick,
@@ -83,6 +86,7 @@ function PhotoCard({
 }: PhotoCardProps) {
   const [writing, setWriting] = useState(false);
   const spinner = useSpinnerStyle(busy);
+  const shakeStyle = useShakeStyle(failed);
   const remain = CAPTION_MAX - caption.length;
 
   return (
@@ -215,21 +219,32 @@ function PhotoCard({
           )}
         </View>
 
-        {saved ? (
+        {saved || failed ? (
           <View
             className="bg-card absolute inset-0 items-center justify-center gap-2.5"
             style={{ borderRadius: radius.xs }}>
-            <ScaleIn from={0.3} spring={mt.spring.pop}>
-              <View className="bg-ink h-14 w-14 items-center justify-center rounded-full">
-                <Icon name="check" size="xl" tone="invert" strokeWidth={3} />
-              </View>
-            </ScaleIn>
-            <Body weight="font-semibold">{`已记录到${dayLabel}`}</Body>
+            <Animated.View style={shakeStyle}>
+              <ScaleIn from={failed ? 0.5 : 0.3} spring={mt.spring.pop}>
+                <View
+                  className={`h-14 w-14 items-center justify-center rounded-full ${
+                    failed ? 'bg-danger-tint' : 'bg-ink'
+                  }`}>
+                  <Icon
+                    name={failed ? 'x' : 'check'}
+                    size="xl"
+                    tone={failed ? 'danger' : 'invert'}
+                    strokeWidth={3}
+                  />
+                </View>
+              </ScaleIn>
+            </Animated.View>
+            <Body weight="font-semibold">{failed ? '保存失败' : `已记录到${dayLabel}`}</Body>
+            {failed ? <Micro>再试一次</Micro> : null}
           </View>
         ) : null}
       </ScaleIn>
 
-      {photo && !saved ? (
+      {photo && !saved && !failed ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="不使用这张照片"
@@ -241,6 +256,26 @@ function PhotoCard({
       ) : null}
     </>
   );
+}
+
+/** 失败时的横向抖动：幅度 8，节奏取 motion 的 fast 令牌 */
+function useShakeStyle(failed: boolean) {
+  const shake = useSharedValue(0);
+
+  useEffect(() => {
+    if (!failed) return;
+    const step = mt.duration.fast * 1000;
+    shake.set(
+      withSequence(
+        withTiming(-1, { duration: step, easing: Easing.out(Easing.quad) }),
+        withTiming(1, { duration: step, easing: Easing.out(Easing.quad) }),
+        withTiming(-0.6, { duration: step, easing: Easing.out(Easing.quad) }),
+        withTiming(0, { duration: step, easing: Easing.out(Easing.quad) })
+      )
+    );
+  }, [failed, shake]);
+
+  return useAnimatedStyle(() => ({ transform: [{ translateX: shake.get() * 8 }] }));
 }
 
 function useSpinnerStyle(active: boolean) {

@@ -15,6 +15,7 @@ export type Recipe = {
   subtitle: string;
   category: string;
   minutes: number;
+  /** 兼容字段：人份已从界面移除（不做换算），服务端仍返回，原样透传 */
   servings: number;
   image: string;
   favorite: boolean;
@@ -28,9 +29,11 @@ export type Recipe = {
 export type Checkin = {
   id: number;
   day: string;
+  /** 兼容字段：餐次已从界面移除，服务端契约仍带；客户端不再读也不再让用户选 */
   meal: string;
   title: string;
   recipeSlug: string | null;
+  /** 兼容字段：份量同上，写入时由数据层补默认值 */
   portion: string;
   time: string;
   note: string;

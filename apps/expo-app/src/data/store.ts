@@ -29,6 +29,13 @@ import {
 let sessionCheckins: Checkin[] = [];
 let sessionRecipes: Recipe[] = [];
 
+/**
+ * 餐次与份量已经从界面移除，但服务端契约里仍然存在。
+ * 写入时统一补这两个兼容值；后端清理掉字段后，连同这里一起删。
+ */
+const LEGACY_MEAL = '正餐';
+const LEGACY_PORTION = '1 份';
+
 /** 退出登录时必须清空，下一位登录者不能看到上一位的数据 */
 export function resetDataCaches() {
   sessionCheckins = [];
@@ -161,7 +168,7 @@ export function useCheckins(day: string = todayISO()) {
 
   const addCheckin = useCallback(
     async (
-      draft: Omit<Checkin, 'id' | 'time' | 'note' | 'planned' | 'photoId'> & {
+      draft: Omit<Checkin, 'id' | 'time' | 'note' | 'planned' | 'photoId' | 'meal' | 'portion'> & {
         time?: string;
         note?: string;
         planned?: boolean;
@@ -174,6 +181,8 @@ export function useCheckins(day: string = todayISO()) {
         note: draft.note ?? '',
         planned: draft.planned ?? false,
         photoId: draft.photoId ?? null,
+        meal: LEGACY_MEAL,
+        portion: LEGACY_PORTION,
         ...draft,
       };
       sessionCheckins = [...sessionCheckins, optimistic];

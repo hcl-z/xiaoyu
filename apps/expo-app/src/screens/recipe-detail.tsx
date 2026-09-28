@@ -1,9 +1,9 @@
 /**
  * 菜谱详情：图片头叠内容；食材 / 步骤 / 记录三标签。
- * 食材可按人份换算并逐条勾选，记录页聚合这道菜的每一次打卡与历次笔记。
+ * 食材可逐条勾选，记录页聚合这道菜的每一次打卡与历次笔记。
  */
 import { useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, View } from 'react-native';
+import { Image, ScrollView, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,13 +12,12 @@ import { NavBar } from '@/chrome';
 import { BottomActionBar } from '@/chrome/tabbar';
 import { useCheckinSheet } from '@/chrome/checkin';
 import { Button, IconButton } from '@/components/button';
-import { CheckCircle, Segmented, Stepper } from '@/components/controls';
+import { CheckCircle, Segmented } from '@/components/controls';
 import { Icon } from '@/components/icon';
 import { Badge, EmptyState, ListRow, Section, Skeleton } from '@/components/surfaces';
 import { Body, Caption, Micro, Title } from '@/components/text';
 import { resolveImageUrl } from '@/data/client';
 import { useRecipeHistory, useRecipes } from '@/data/store';
-import { scaleAmount } from '@/domain/amount';
 import { dayLabel, relativeDayLabel } from '@/domain/date';
 import { useFadeSwap } from '@/motion';
 
@@ -37,8 +36,6 @@ export function RecipeDetailScreen() {
 
   const [tab, setTab] = useState<Tab>('ing');
   const [checked, setChecked] = useState<number[]>([]);
-  /** 想做几人份；null = 跟着菜谱写的人份走 */
-  const [servings, setServings] = useState<number | null>(null);
 
   const flat = useMemo(() => (recipe ? recipe.ingredients.flatMap((g) => g.items) : []), [recipe]);
 
@@ -90,11 +87,6 @@ export function RecipeDetailScreen() {
   const toggleFavorite = () => {
     void updateRecipe(recipe.slug, { ...recipe, favorite: !recipe.favorite });
   };
-
-  /** 当前想做的人份与缩放倍率 */
-  const wanted = servings ?? recipe.servings;
-  const factor = recipe.servings > 0 ? wanted / recipe.servings : 1;
-  const scaled = factor !== 1;
 
   /** 只取有内容的笔记，最新的在前 */
   const notes = history.history.filter((h) => h.note.trim().length > 0);
@@ -176,7 +168,6 @@ export function RecipeDetailScreen() {
           <Section padded>
             <View className="flex-row">
               <MetricFact icon="clock" value={recipe.minutes} unit="分钟" first />
-              <MetricFact icon="users" value={recipe.servings} unit="人份" />
               <MetricFact icon="check" value={recipe.cooked} unit="做过" />
             </View>
             <View className="border-hair mt-4 flex-row items-center justify-between gap-3 border-t pt-3.5">
@@ -202,46 +193,6 @@ export function RecipeDetailScreen() {
           <Animated.View style={[tabStyle, { rowGap: 20 }]}>
             {tab === 'ing' ? (
               <View style={{ rowGap: 20 }}>
-                {/* 人份换算：只影响展示，不改菜谱本身 */}
-                <Section
-                  padded
-                  footer={
-                    scaled
-                      ? `用量已按 ${recipe.servings} → ${wanted} 人份换算，菜谱本身未修改`
-                      : '改人份，下方用量跟着变'
-                  }>
-                  <View className="flex-row items-center justify-between gap-3">
-                    <View className="min-w-0 flex-1">
-                      <Micro>做几人份</Micro>
-                      <Caption className="mt-0.5">
-                        {scaled ? `原方 ${recipe.servings} 人份` : '按菜谱原方'}
-                      </Caption>
-                    </View>
-                    <View className="shrink-0 flex-row items-center gap-2">
-                      <Stepper
-                        value={wanted}
-                        onChange={setServings}
-                        min={1}
-                        max={20}
-                        suffix=" 人份"
-                        label="人份"
-                      />
-                      {scaled ? (
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel="复原人份"
-                          onPress={() => setServings(null)}
-                          hitSlop={6}
-                          className="shrink-0 px-1">
-                          <Body tone="accent" size="text-[13px]">
-                            复原
-                          </Body>
-                        </Pressable>
-                      ) : null}
-                    </View>
-                  </View>
-                </Section>
-
                 {recipe.ingredients.map((group, gi) => {
                   const offset = recipe.ingredients
                     .slice(0, gi)
@@ -288,12 +239,8 @@ export function RecipeDetailScreen() {
                               </Body>
                             }
                             value={
-                              <Body
-                                tabular
-                                weight={scaled ? 'font-semibold' : 'font-medium'}
-                                tone={scaled ? 'accent' : 'muted'}
-                                size="text-caption">
-                                {scaleAmount(item.amount, factor)}
+                              <Body tabular weight="font-medium" tone="muted" size="text-caption">
+                                {item.amount}
                               </Body>
                             }
                             onPress={() =>
@@ -357,7 +304,7 @@ export function RecipeDetailScreen() {
                           </View>
                         }
                         title={dayLabel(item.day)}
-                        subtitle={[item.meal, item.portion, item.note].filter(Boolean).join(' · ')}
+                        subtitle={item.note || undefined}
                         accessory="chevron"
                         onPress={() => router.push(`/today?day=${item.day}`)}
                       />
@@ -380,7 +327,7 @@ export function RecipeDetailScreen() {
                             {item.note}
                           </Body>
                         }
-                        subtitle={`${dayLabel(item.day)} · ${item.meal}`}
+                        subtitle={dayLabel(item.day)}
                       />
                     ))}
                   </Section>
@@ -421,7 +368,7 @@ export function RecipeDetailScreen() {
                         label={`查看 ${item.day}`}
                         leading={<CheckCircle done size={22} />}
                         title={dayLabel(item.day)}
-                        subtitle={[item.time, item.meal, item.portion].filter(Boolean).join(' · ')}
+                        subtitle={item.time || undefined}
                         accessory="chevron"
                         onPress={() => router.push(`/today?day=${item.day}`)}
                       />

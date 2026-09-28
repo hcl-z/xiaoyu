@@ -118,7 +118,8 @@ function RecipeEditorForm({
   const [subtitle, setSubtitle] = useState(recipe?.subtitle ?? '');
   const [category, setCategory] = useState<string>(recipe?.category ?? '');
   const [minutes, setMinutes] = useState(recipe?.minutes ?? 20);
-  const [servings, setServings] = useState(recipe?.servings ?? 2);
+  /** 人份已从界面移除；保存时原样带回，别把服务端已有的值抹成默认 */
+  const [servings] = useState(recipe?.servings ?? 2);
   const [tags, setTags] = useState<string[]>(recipe?.tags ?? []);
   const [groups, setGroups] = useState<Group[]>(
     recipe?.ingredients.length
@@ -282,16 +283,6 @@ function RecipeEditorForm({
                 min={5}
                 max={240}
                 suffix=" 分钟"
-              />
-            </FieldRow>
-            <FieldRow label="份量">
-              <Stepper
-                label="份量"
-                value={servings}
-                onChange={setServings}
-                min={1}
-                max={12}
-                suffix=" 人份"
               />
             </FieldRow>
           </Section>

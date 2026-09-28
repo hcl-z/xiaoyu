@@ -232,7 +232,6 @@ function FeaturedCard({ recipe, onPress }: { recipe: Recipe; onPress: () => void
         </View>
         <View className="mt-1 flex-row items-center gap-3">
           <Fact icon="clock" text={`${recipe.minutes} 分钟`} />
-          <Fact icon="users" text={`${recipe.servings} 人份`} />
           <Caption size="text-caption" tone="invert" tabular>
             {`做过 ${recipe.cooked} 次`}
           </Caption>
@@ -248,7 +247,7 @@ function FeaturedCard({ recipe, onPress }: { recipe: Recipe; onPress: () => void
   );
 }
 
-function Fact({ icon, text }: { icon: 'clock' | 'users'; text: string }) {
+function Fact({ icon, text }: { icon: 'clock'; text: string }) {
   return (
     <View className="flex-row items-center gap-1">
       <Icon name={icon} size="sm" tone="invert" />

@@ -183,7 +183,7 @@ export function ProfileScreen() {
       <Alert
         open={about}
         title="daily +"
-        message="菜谱管理与每日饮食打卡。随吃随记，不设固定餐次束缚。"
+        message="菜谱管理与每日饮食打卡。想到就记，不用先归类。"
         cancelLabel="知道了"
         confirmLabel="查看系统"
         destructive={false}

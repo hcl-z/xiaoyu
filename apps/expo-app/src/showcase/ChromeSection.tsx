@@ -159,9 +159,9 @@ export function ChromeSection() {
                 番茄牛腩饭
               </Caption>
             </FieldRow>
-            <FieldRow label="餐次">
+            <FieldRow label="用时">
               <Caption size="text-body" tone="ink">
-                午餐
+                30 分钟
               </Caption>
             </FieldRow>
           </Card>

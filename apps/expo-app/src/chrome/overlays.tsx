@@ -7,12 +7,18 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from 'expo-router';
 
 import { ScaleIn, usePresence, useSpringPresence } from '@/motion';
-import { alpha, color, elevationStyle, hairline, layout, radius } from '@/theme';
+import { alpha, color, elevationStyle, hairline, layout, motion as mt, radius } from '@/theme';
 
 import { Icon, type IconName } from '@/components/icon';
 import { Body, Caption, Micro, Subhead } from '@/components/text';
@@ -122,23 +128,49 @@ function AlertButton({
 }
 
 /* ------------------------------------------------------------------ */
-/* SuccessOverlay — 保存成功态（覆盖在弹层上）                            */
+/* SuccessOverlay — 保存结果态：成功 / 失败（覆盖在弹层上）                 */
 /* ------------------------------------------------------------------ */
 /**
- * 覆盖父容器的成功态。父容器需要是定位上下文（默认就是）。
+ * 覆盖父容器的结果态。父容器需要是定位上下文（默认就是）。
  * 挂载/卸载由 usePresence 控制：先播完淡出再卸载。
+ *
+ * tone="failure" 换一套身份：红浅底圆 + 叉 + 横向抖动，成功对勾仍然是绿圈弹入。
+ * 两者共用同一个圆心、同一档尺寸、同一套落位节奏，所以既区分得开，又不会
+ * 像两个系统的东西。
  */
 export function SuccessOverlay({
   open,
   title,
   caption,
+  tone = 'success',
 }: {
   open: boolean;
   title: string;
   caption?: string;
+  tone?: 'success' | 'failure';
 }) {
   const { mounted, progress } = usePresence(open);
   const fade = useAnimatedStyle(() => ({ opacity: progress.get() }));
+  const shake = useSharedValue(0);
+  const failed = tone === 'failure';
+
+  /** 横向抖动：幅度取 8（标签内边距档），节奏取 motion 的 fast 令牌 */
+  useEffect(() => {
+    if (!mounted || !failed) return;
+    const step = mt.duration.fast * 1000;
+    shake.set(
+      withSequence(
+        withTiming(-1, { duration: step, easing: Easing.out(Easing.quad) }),
+        withTiming(1, { duration: step, easing: Easing.out(Easing.quad) }),
+        withTiming(-0.6, { duration: step, easing: Easing.out(Easing.quad) }),
+        withTiming(0, { duration: step, easing: Easing.out(Easing.quad) })
+      )
+    );
+  }, [mounted, failed, shake]);
+
+  const shakeStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: shake.get() * 8 }],
+  }));
 
   if (!mounted) return null;
 
@@ -160,11 +192,21 @@ export function SuccessOverlay({
         },
         fade,
       ]}>
-      <ScaleIn from={0.4} spring={{ damping: 16, stiffness: 420 }}>
-        <View className="bg-lake h-16 w-16 flex-row items-center justify-center rounded-full">
-          <Icon name="check" size="xl" tone="invert" strokeWidth={3} />
-        </View>
-      </ScaleIn>
+      <Animated.View style={shakeStyle}>
+        <ScaleIn from={failed ? 0.5 : 0.4} spring={{ damping: 16, stiffness: 420 }}>
+          <View
+            className={`h-16 w-16 flex-row items-center justify-center rounded-full ${
+              failed ? 'bg-danger-tint' : 'bg-lake'
+            }`}>
+            <Icon
+              name={failed ? 'x' : 'check'}
+              size="xl"
+              tone={failed ? 'danger' : 'invert'}
+              strokeWidth={3}
+            />
+          </View>
+        </ScaleIn>
+      </Animated.View>
       <Subhead size="text-[16px]" className="mt-3">
         {title}
       </Subhead>

@@ -3,6 +3,7 @@
  * ------------------------------------------------------------------
  * 与 Web 的 CheckinProvider 同一套行为：FAB 唤起、就地弹出、不离开当前页；
  * 未来日期写的是「计划」，当天可以一键确认成「已吃」。
+ * 餐次与份量已经不在界面上出现：吃什么就是什么，不再先归类。
  *
  * 原生差异：Web 用 portal 到 body 解决 transform 包含块的问题，
  * 原生直接把整层浮层挂成覆盖全屏的 box-none 容器，两个扇出按钮用极坐标定位。
@@ -23,22 +24,24 @@ import { Icon } from '@/components/icon';
 import { Badge, ListRow, Section, Skeleton } from '@/components/surfaces';
 import { Body, Caption, Micro } from '@/components/text';
 import { Button } from '@/components/button';
-import { Segmented } from '@/components/controls';
 import { SearchField, TextArea } from '@/components/inputs';
 import { apiUrl, authedImageSource } from '@/data/client';
 import { useCheckins, useRecipes } from '@/data/store';
 import type { Checkin } from '@/data/types';
 import { todayISO } from '@/domain/date';
-import { INTAKE_TAGS, PORTIONS, portionValueOf, smartMeal } from '@/domain/meal';
 import { pickPhoto, uploadPhoto, type PreparedPhoto, type PhotoSource } from '@/photo';
 import { motion as mt } from '@/theme';
 
 import { Alert, SuccessOverlay } from './overlays';
 import { PhotoCheckinModal } from './photo-checkin';
+import { simulateSaveOutcome } from './save-outcome';
 import { Sheet } from './sheet';
 
-type OpenOpts = { meal?: string; recipe?: string | null; day?: string; existing?: Checkin };
-type PhotoOpts = { day?: string; meal?: string };
+type OpenOpts = { recipe?: string | null; day?: string; existing?: Checkin };
+type PhotoOpts = { day?: string };
+
+/** 保存流程的显式状态：失败要能被看见，也要能原地重试 */
+type SavePhase = 'idle' | 'saving' | 'success' | 'failure';
 
 type CheckinCtx = {
   /** 当前正在浏览的日期；FAB 据此决定是「记一笔」还是「安排一道」 */
@@ -67,35 +70,33 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
   const [activeDay, setActiveDay] = useState(today);
 
   const [open, setOpen] = useState(false);
-  const [meal, setMeal] = useState<string>('正餐');
   const [day, setDay] = useState(today);
   const [existing, setExisting] = useState<Checkin | undefined>();
   const [query, setQuery] = useState('');
   const [slug, setSlug] = useState<string | null>(null);
-  const [portion, setPortion] = useState('1');
   const [note, setNote] = useState('');
-  const [saved, setSaved] = useState(false);
+  const [phase, setPhase] = useState<SavePhase>('idle');
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   /* ---- 照片打卡：同一种入口，但体裁是「拼一张卡片」而不是填表单 ---- */
   const [photoOpen, setPhotoOpen] = useState(false);
   const [photoDay, setPhotoDay] = useState(today);
-  const [photoMeal, setPhotoMeal] = useState<string>('正餐');
   const [photoCaption, setPhotoCaption] = useState('');
   const [photo, setPhoto] = useState<PreparedPhoto | null>(null);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState('');
   const [photoSaved, setPhotoSaved] = useState(false);
+  const [photoFailed, setPhotoFailed] = useState(false);
 
   const openPhotoCheckin = useCallback(
     (opts?: PhotoOpts) => {
       setPhotoDay(opts?.day ?? today);
-      setPhotoMeal(opts?.meal ?? smartMeal());
       setPhotoCaption('');
       setPhoto(null);
       setPhotoError('');
       setPhotoBusy(false);
       setPhotoSaved(false);
+      setPhotoFailed(false);
       setPhotoOpen(true);
     },
     [today]
@@ -114,22 +115,33 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const canSavePhoto = photo !== null && !photoBusy && !photoSaved;
+  /** 结果展示期间不允许再点保存，避免失败态上又叠一次保存 */
+  const canSavePhoto = photo !== null && !photoBusy && !photoSaved && !photoFailed;
 
   const savePhoto = useCallback(async () => {
     if (!photo || !canSavePhoto) return;
     setPhotoBusy(true);
     setPhotoError('');
+
+    // UI 阶段：随机演练失败态；接入真实保存后换成接口返回值
+    if (simulateSaveOutcome() === 'failure') {
+      // 失败态自己就是反馈，按钮不再同时转圈
+      setPhotoBusy(false);
+      setPhotoFailed(true);
+      setTimeout(() => {
+        setPhotoFailed(false);
+      }, 1400);
+      return;
+    }
+
     try {
       const photoId = await uploadPhoto(photo);
       setPhotoSaved(true);
       await addCheckin({
         day: photoDay,
-        meal: photoMeal,
         // 文案可空，照片本身就是内容
         title: photoCaption.trim() || '照片记录',
         recipeSlug: null,
-        portion: '1 份',
         note: '',
         photoId,
       });
@@ -144,19 +156,17 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
     } finally {
       setPhotoBusy(false);
     }
-  }, [addCheckin, canSavePhoto, photo, photoCaption, photoDay, photoMeal]);
+  }, [addCheckin, canSavePhoto, photo, photoCaption, photoDay]);
 
   const openCheckin = useCallback(
     (opts?: OpenOpts) => {
       const record = opts?.existing;
       setDay(opts?.day ?? record?.day ?? today);
-      setMeal(record?.meal ?? opts?.meal ?? smartMeal());
       setExisting(record);
       setSlug(record?.recipeSlug ?? opts?.recipe ?? null);
       setQuery('');
-      setPortion(portionValueOf(record?.portion));
       setNote(record?.note ?? '');
-      setSaved(false);
+      setPhase('idle');
       setConfirmDelete(false);
       setOpen(true);
     },
@@ -182,30 +192,40 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
   const manualTitle = existing && !selected ? query.trim() || existing.title : query.trim();
   const title = selected?.title ?? (slug === null ? manualTitle : '');
   const canSave = title.trim().length > 0;
-  const portionLabel = PORTIONS.find((p) => p.value === portion)?.label ?? '1 份';
   const dayLabel =
     day === today ? '今天' : `${Number(day.slice(5, 7))}月${Number(day.slice(8, 10))}日`;
 
   /** 未来日期写入的是「计划」；改一条已有记录时沿用它自己的属性 */
   const isPlan = existing ? existing.planned : day > today;
   const verb = isPlan ? '安排' : '记录';
+  /** 保存中 / 结果展示中都算忙，避免连点 */
+  const busy = phase !== 'idle';
+  /** 只有走到结果才覆盖结果态；「保存中」仍然看得到表单 */
+  const resultOpen = phase === 'success' || phase === 'failure';
 
-  const close = useCallback(() => setOpen(false), []);
+  const close = useCallback(() => {
+    setPhase('idle');
+    setOpen(false);
+  }, []);
 
   const save = useCallback(() => {
-    if (!canSave || saved) return;
-    setSaved(true);
+    if (!canSave || phase !== 'idle') return;
+    setPhase('saving');
     setTimeout(() => {
+      // UI 阶段：随机演练失败态；接入真实保存后换成接口返回值
+      if (simulateSaveOutcome() === 'failure') {
+        setPhase('failure');
+        setTimeout(() => setPhase('idle'), 1400);
+        return;
+      }
       void (async () => {
         if (existing) {
           await patchCheckin(
             existing.id,
             {
               day,
-              meal,
               title: title.trim(),
               recipeSlug: slug,
-              portion: portionLabel,
               note: note.trim(),
               planned: isPlan,
             },
@@ -214,32 +234,20 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
         } else {
           await addCheckin({
             day,
-            meal,
             title: title.trim(),
             recipeSlug: slug,
-            portion: portionLabel,
             note: note.trim(),
             planned: isPlan,
           });
         }
-        setOpen(false);
-        setSaved(false);
+        setPhase('success');
+        setTimeout(() => {
+          setOpen(false);
+          setPhase('idle');
+        }, 900);
       })();
     }, 700);
-  }, [
-    addCheckin,
-    canSave,
-    day,
-    existing,
-    isPlan,
-    meal,
-    note,
-    patchCheckin,
-    portionLabel,
-    saved,
-    slug,
-    title,
-  ]);
+  }, [addCheckin, canSave, day, existing, isPlan, note, patchCheckin, phase, slug, title]);
 
   /** 计划 → 已吃：只翻 planned 一个字段，时间改为当下 */
   const confirmPlan = useCallback(
@@ -256,22 +264,22 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
   const remove = useCallback(async () => {
     if (!existing) return;
     setConfirmDelete(false);
-    setSaved(true);
+    setPhase('success');
     await removeCheckin(existing.id, day);
     setTimeout(() => {
       setOpen(false);
-      setSaved(false);
+      setPhase('idle');
       setExisting(undefined);
     }, 500);
   }, [day, existing, removeCheckin]);
 
   const confirmExistingPlan = useCallback(() => {
     if (!existing) return;
-    setSaved(true);
+    setPhase('success');
     void confirmPlan(existing).then(() => {
       setTimeout(() => {
         setOpen(false);
-        setSaved(false);
+        setPhase('idle');
       }, 500);
     });
   }, [confirmPlan, existing]);
@@ -281,10 +289,6 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
     [activeDay, openCheckin, openPhotoCheckin, confirmPlan]
   );
 
-  const mealOptions = (INTAKE_TAGS as readonly string[]).includes(meal)
-    ? INTAKE_TAGS.map((m) => ({ value: m, label: m }))
-    : [{ value: meal, label: meal }, ...INTAKE_TAGS.map((m) => ({ value: m, label: m }))];
-
   return (
     <Ctx.Provider value={value}>
       {children}
@@ -292,16 +296,14 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
       <Sheet
         open={open}
         onClose={close}
-        title={existing ? (isPlan ? '修改计划' : '修改记录') : isPlan ? '安排一餐' : '记一笔'}
-        subtitle={`${dayLabel} · ${meal}`}
+        title={existing ? (isPlan ? '修改计划' : '修改记录') : isPlan ? '安排一道' : '记一笔'}
+        subtitle={dayLabel}
         action={
-          canSave
-            ? { label: existing ? '更新' : '保存', onPress: save, disabled: saved }
-            : undefined
+          canSave ? { label: existing ? '更新' : '保存', onPress: save, disabled: busy } : undefined
         }
         footer={
-          <Button size="lg" block disabled={!canSave || saved} onPress={save}>
-            {saved
+          <Button size="lg" block disabled={!canSave || busy} onPress={save}>
+            {phase === 'saving'
               ? '保存中…'
               : existing
                 ? `更新${dayLabel}${isPlan ? '计划' : '记录'}`
@@ -330,8 +332,6 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
               </Caption>
             </View>
           ) : null}
-
-          <Segmented value={meal} onChange={setMeal} options={mealOptions} />
 
           <SearchField
             value={query}
@@ -417,10 +417,6 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
             </Section>
           )}
 
-          <Section tone="deep" title="份量" padded>
-            <Segmented value={portion} onChange={setPortion} options={[...PORTIONS]} />
-          </Section>
-
           {/* 这次做的心得：绑定了菜谱时会聚合到详情页的「历次笔记」 */}
           <Section
             tone="deep"
@@ -485,16 +481,23 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
             </View>
             <View className="shrink-0 flex-row items-center gap-2">
               {isPlan ? <Badge tone="lake">计划</Badge> : null}
-              <Badge tone="gray">{meal}</Badge>
-              <Badge tone="accent">{portionLabel}</Badge>
             </View>
           </View>
         </View>
 
         <SuccessOverlay
-          open={saved}
-          title={existing ? '已更新' : isPlan ? `已安排到${dayLabel}` : `已记录到${dayLabel}`}
-          caption={`${meal} · ${portionLabel}`}
+          open={resultOpen}
+          tone={phase === 'failure' ? 'failure' : 'success'}
+          title={
+            phase === 'failure'
+              ? '保存失败'
+              : existing
+                ? '已更新'
+                : isPlan
+                  ? `已安排到${dayLabel}`
+                  : `已记录到${dayLabel}`
+          }
+          caption={phase === 'failure' ? '网络不太稳，再试一次' : undefined}
         />
       </Sheet>
 
@@ -502,7 +505,11 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
       <Alert
         open={confirmDelete}
         title={existing?.planned ? '取消这条计划？' : '删除这条记录？'}
-        message={`${dayLabel}的${meal}将被移除，无法恢复。`}
+        message={
+          existing?.planned
+            ? `${dayLabel}的这条安排将被移除，无法恢复。`
+            : `${dayLabel}的这条记录将被移除，无法恢复。`
+        }
         confirmLabel={existing?.planned ? '取消计划' : '删除'}
         onCancel={() => setConfirmDelete(false)}
         onConfirm={remove}
@@ -526,6 +533,7 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
         busy={photoBusy}
         error={photoError}
         saved={photoSaved}
+        failed={photoFailed}
         canSave={canSavePhoto}
         onPick={() => void choosePhoto(photo ? 'library' : 'camera')}
         onClear={() => setPhoto(null)}
