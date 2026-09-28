@@ -190,7 +190,6 @@ export function TabBar({
           <Tab key={i.value} item={i} />
         ))}
       </div>
-      <HomeIndicator />
     </div>
   );
 }
