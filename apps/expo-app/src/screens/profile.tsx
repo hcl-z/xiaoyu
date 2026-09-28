@@ -55,9 +55,7 @@ export function ProfileScreen() {
                 {isDemo ? <Badge tone="gray">演示账号</Badge> : null}
               </View>
               <Caption className="mt-0.5">
-                {loading
-                  ? '统计中…'
-                  : `连续 ${stats.streak} 天 · 本月 ${stats.totals.activeDays} 天有记录`}
+                {loading ? '统计中…' : `本月 ${stats.totals.activeDays} 天有记录`}
               </Caption>
             </View>
             <Badge tone="accent">

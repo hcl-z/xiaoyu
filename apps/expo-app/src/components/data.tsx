@@ -382,7 +382,7 @@ function HeatCell({
       <Pressable
         disabled={!interactive}
         accessibilityRole={interactive ? 'button' : 'image'}
-        accessibilityLabel={day ? `${day}，记录 ${value} 餐` : `记录 ${value} 餐`}
+        accessibilityLabel={day ? `${day}，${value} 条记录` : `${value} 条记录`}
         hitSlop={interactive ? 3 : undefined}
         onPress={day ? () => onSelect?.(day) : undefined}
         className={cx('flex-1', current && 'border-indigo border-2')}

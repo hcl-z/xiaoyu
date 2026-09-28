@@ -172,7 +172,7 @@ export function TodayScreen() {
       ? `${planned.length} 道安排`
       : '还没有安排'
     : done.length > 0
-      ? `${done.length} 次记录 · ${done[0].time} – ${done[done.length - 1].time}`
+      ? `${done.length} 条记录 · ${done[0].time} – ${done[done.length - 1].time}`
       : planned.length > 0
         ? `${planned.length} 道安排`
         : '还没有记录';
