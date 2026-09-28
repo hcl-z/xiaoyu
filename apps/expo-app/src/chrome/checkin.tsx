@@ -17,8 +17,9 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { Image, Pressable, View } from 'react-native';
+import { Image, Platform, Pressable, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 import { Icon } from '@/components/icon';
 import { Badge, ListRow, Section, Skeleton } from '@/components/surfaces';
@@ -42,6 +43,24 @@ type PhotoOpts = { day?: string };
 
 /** 保存流程的显式状态：失败要能被看见，也要能原地重试 */
 type SavePhase = 'idle' | 'saving' | 'success' | 'failure';
+
+/** 结果态的文案由触发的动作直接给出，而不是从「有没有 existing」反推 */
+type SaveResult = { tone: 'success' | 'failure'; title: string; caption?: string };
+
+/** 未来日期默认落在正午：半夜安排明天的饭，不该默认记成半夜吃 */
+const DEFAULT_PLAN_TIME = '12:00';
+
+function dateToTime(date: Date) {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+/** 原生选择器只认 Date，业务与接口只认 "HH:MM" */
+function timeToDate(time: string) {
+  const [h, m] = time.split(':').map(Number);
+  const date = new Date();
+  date.setHours(Number.isFinite(h) ? h : 12, Number.isFinite(m) ? m : 0, 0, 0);
+  return date;
+}
 
 type CheckinCtx = {
   /** 当前正在浏览的日期；FAB 据此决定是「记一笔」还是「安排一道」 */
@@ -75,7 +94,10 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
   const [query, setQuery] = useState('');
   const [slug, setSlug] = useState<string | null>(null);
   const [note, setNote] = useState('');
+  /** 用餐时间：时间轴按它排序，所以必须是可改的 */
+  const [time, setTime] = useState(() => dateToTime(new Date()));
   const [phase, setPhase] = useState<SavePhase>('idle');
+  const [result, setResult] = useState<SaveResult | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   /* ---- 照片打卡：同一种入口，但体裁是「拼一张卡片」而不是填表单 ---- */
@@ -161,12 +183,15 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
   const openCheckin = useCallback(
     (opts?: OpenOpts) => {
       const record = opts?.existing;
-      setDay(opts?.day ?? record?.day ?? today);
+      const target = opts?.day ?? record?.day ?? today;
+      setDay(target);
       setExisting(record);
       setSlug(record?.recipeSlug ?? opts?.recipe ?? null);
       setQuery('');
       setNote(record?.note ?? '');
+      setTime(record ? record.time : target > today ? DEFAULT_PLAN_TIME : dateToTime(new Date()));
       setPhase('idle');
+      setResult(null);
       setConfirmDelete(false);
       setOpen(true);
     },
@@ -201,10 +226,11 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
   /** 保存中 / 结果展示中都算忙，避免连点 */
   const busy = phase !== 'idle';
   /** 只有走到结果才覆盖结果态；「保存中」仍然看得到表单 */
-  const resultOpen = phase === 'success' || phase === 'failure';
+  const resultOpen = result !== null;
 
   const close = useCallback(() => {
     setPhase('idle');
+    setResult(null);
     setOpen(false);
   }, []);
 
@@ -215,7 +241,11 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
       // UI 阶段：随机演练失败态；接入真实保存后换成接口返回值
       if (simulateSaveOutcome() === 'failure') {
         setPhase('failure');
-        setTimeout(() => setPhase('idle'), 1400);
+        setResult({ tone: 'failure', title: '保存失败', caption: '网络不太稳，再试一次' });
+        setTimeout(() => {
+          setResult(null);
+          setPhase('idle');
+        }, 1400);
         return;
       }
       void (async () => {
@@ -224,6 +254,7 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
             existing.id,
             {
               day,
+              time,
               title: title.trim(),
               recipeSlug: slug,
               note: note.trim(),
@@ -234,6 +265,7 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
         } else {
           await addCheckin({
             day,
+            time,
             title: title.trim(),
             recipeSlug: slug,
             note: note.trim(),
@@ -241,13 +273,31 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
           });
         }
         setPhase('success');
+        setResult({
+          tone: 'success',
+          title: existing ? '已更新' : isPlan ? `已安排到${dayLabel}` : `已记录到${dayLabel}`,
+        });
         setTimeout(() => {
           setOpen(false);
           setPhase('idle');
+          setResult(null);
         }, 900);
       })();
     }, 700);
-  }, [addCheckin, canSave, day, existing, isPlan, note, patchCheckin, phase, slug, title]);
+  }, [
+    addCheckin,
+    canSave,
+    day,
+    dayLabel,
+    existing,
+    isPlan,
+    note,
+    patchCheckin,
+    phase,
+    slug,
+    time,
+    title,
+  ]);
 
   /** 计划 → 已吃：只翻 planned 一个字段，时间改为当下 */
   const confirmPlan = useCallback(
@@ -265,10 +315,15 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
     if (!existing) return;
     setConfirmDelete(false);
     setPhase('success');
+    setResult({
+      tone: 'success',
+      title: existing.planned ? '已取消这条计划' : '已删除这条记录',
+    });
     await removeCheckin(existing.id, day);
     setTimeout(() => {
       setOpen(false);
       setPhase('idle');
+      setResult(null);
       setExisting(undefined);
     }, 500);
   }, [day, existing, removeCheckin]);
@@ -276,10 +331,12 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
   const confirmExistingPlan = useCallback(() => {
     if (!existing) return;
     setPhase('success');
+    setResult({ tone: 'success', title: '已记为吃过' });
     void confirmPlan(existing).then(() => {
       setTimeout(() => {
         setOpen(false);
         setPhase('idle');
+        setResult(null);
       }, 500);
     });
   }, [confirmPlan, existing]);
@@ -298,9 +355,6 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
         onClose={close}
         title={existing ? (isPlan ? '修改计划' : '修改记录') : isPlan ? '安排一道' : '记一笔'}
         subtitle={dayLabel}
-        action={
-          canSave ? { label: existing ? '更新' : '保存', onPress: save, disabled: busy } : undefined
-        }
         footer={
           <Button size="lg" block disabled={!canSave || busy} onPress={save}>
             {phase === 'saving'
@@ -332,6 +386,39 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
               </Caption>
             </View>
           ) : null}
+
+          {/* 用餐时间：时间轴按它排序，所以它是一个可改的字段，而不是「保存那一刻」 */}
+          <Section
+            tone="deep"
+            title="时间"
+            footer={isPlan ? '到那天，它就排在时间轴的这一刻' : '决定它排在时间轴的哪个位置'}>
+            <View className="flex-row items-center justify-between gap-3 px-4 py-2.5">
+              <Body>几点吃</Body>
+              <View className="shrink-0 flex-row items-center gap-2">
+                {day === today ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="改为现在"
+                    hitSlop={6}
+                    onPress={() => setTime(dateToTime(new Date()))}
+                    className="bg-tint rounded-control px-2.5 py-1 active:opacity-60">
+                    <Body tone="accent" size="text-[13px]" weight="font-medium">
+                      现在
+                    </Body>
+                  </Pressable>
+                ) : null}
+                <DateTimePicker
+                  value={timeToDate(time)}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'compact' : 'default'}
+                  locale="zh-CN"
+                  onChange={(_event: DateTimePickerEvent, next?: Date) => {
+                    if (next) setTime(dateToTime(next));
+                  }}
+                />
+              </View>
+            </View>
+          </Section>
 
           <SearchField
             value={query}
@@ -480,6 +567,9 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
               </Body>
             </View>
             <View className="shrink-0 flex-row items-center gap-2">
+              <Body tabular size="text-[15px]" weight="font-semibold" tone="muted">
+                {time}
+              </Body>
               {isPlan ? <Badge tone="lake">计划</Badge> : null}
             </View>
           </View>
@@ -487,17 +577,9 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
 
         <SuccessOverlay
           open={resultOpen}
-          tone={phase === 'failure' ? 'failure' : 'success'}
-          title={
-            phase === 'failure'
-              ? '保存失败'
-              : existing
-                ? '已更新'
-                : isPlan
-                  ? `已安排到${dayLabel}`
-                  : `已记录到${dayLabel}`
-          }
-          caption={phase === 'failure' ? '网络不太稳，再试一次' : undefined}
+          tone={result?.tone ?? 'success'}
+          title={result?.title ?? ''}
+          caption={result?.caption}
         />
       </Sheet>
 

@@ -18,7 +18,6 @@ import { Stat } from '@/components/data';
 import {
   Badge,
   Card,
-  EmptyState,
   ListRow,
   Section,
   SectionHeader,
@@ -80,8 +79,12 @@ export function TodayScreen() {
   const { stats } = useStats();
   const { recipes } = useRecipes();
   const { user } = useSession();
-  /** 接下来一周的安排，只在看今天时当作预告展示 */
-  const upcoming = useCheckinRange(shiftDay(today, 1), shiftDay(today, 7));
+  /**
+   * 整个可安排区间（今天到 PLAN_HORIZON）的安排。
+   * 拉满区间是因为周历上的「已安排」圆点要覆盖所有能排的日子；
+   * 「接下来的安排」列表再按未来七天截取。
+   */
+  const plannedRange = useCheckinRange(shiftDay(today, 1), maxDay);
 
   const setActiveDay = sheet.setActiveDay;
 
@@ -116,8 +119,12 @@ export function TodayScreen() {
     [checkins]
   );
   const upcomingPlans = useMemo(
-    () => upcoming.checkins.filter((c) => c.planned).slice(0, 4),
-    [upcoming.checkins]
+    () =>
+      plannedRange.checkins
+        .filter((c) => c.planned && c.day <= shiftDay(today, 7))
+        .sort((a, b) => a.day.localeCompare(b.day) || a.time.localeCompare(b.time))
+        .slice(0, 4),
+    [plannedRange.checkins, today]
   );
 
   /** 「现在」在当天时间轴上的位置：不做秒级刷新，切换日期时重算就够 */
@@ -176,9 +183,9 @@ export function TodayScreen() {
     return week.map((d) => map.get(d) ?? 0);
   }, [stats.days, week]);
   const weekPlanned = useMemo(() => {
-    const set = new Set(upcoming.checkins.filter((c) => c.planned).map((c) => c.day));
+    const set = new Set(plannedRange.checkins.filter((c) => c.planned).map((c) => c.day));
     return week.map((d) => set.has(d));
-  }, [upcoming.checkins, week]);
+  }, [plannedRange.checkins, week]);
 
   const select = (next: string) => {
     if (next > maxDay) return;
@@ -370,41 +377,13 @@ export function TodayScreen() {
               : '按用餐时间排序 · 轻点记录可修改或删除'}
           </Caption>
         </View>
-      ) : isFuture ? (
-        <View className="px-5">
-          <Section>
-            <EmptyState
-              icon={<Icon name="calendar-plus" size="xl" tone="accent" />}
-              title="这天还没安排"
-              description="提前挂上想做的菜，到时不用现想吃什么。"
-              action={
-                <Button size="sm" onPress={() => sheet.openCheckin({ day })}>
-                  安排一道
-                </Button>
-              }
-            />
-          </Section>
-        </View>
       ) : (
-        /* 兜底：不摆卡片、也不进时间轴，把「现在」的位置让给一句邀请 */
-        <View className="px-5">
-          <View
-            className="items-center justify-center"
-            style={{ minHeight: 360, paddingBottom: 40 }}>
-            <View className="bg-fill-deep h-14 w-14 items-center justify-center rounded-full">
-              <Icon name="notebook-pen" size="xl" tone="soft" />
-            </View>
-            <Subhead className="mt-4 text-center">
-              {isToday ? '今天吃了什么？' : '这天吃了什么？'}
-            </Subhead>
-            <Caption className="mt-1.5 text-center" style={{ maxWidth: 250 }}>
-              写一句，或者直接拍张照。
-            </Caption>
-            <View className="mt-5">
-              <Button onPress={() => sheet.openCheckin({ day })}>记一笔</Button>
-            </View>
-          </View>
-        </View>
+        /* 空状态：不摆卡片、也不进时间轴，把「现在」的位置让给一句邀请 */
+        <DayEmptyState
+          isToday={isToday}
+          isFuture={isFuture}
+          onPress={() => sheet.openCheckin({ day })}
+        />
       )}
 
       {/* 看今天时预告未来一周的安排，点进去就是那天 */}
@@ -472,6 +451,40 @@ export function TodayScreen() {
         </View>
       </View>
     </ScrollView>
+  );
+}
+
+/**
+ * 一天没有任何内容时的兜底。
+ * 过去 / 今天：邀请写一句；将来：邀请挂一道计划。
+ * 两者只是图标与文案不同，骨架共用——同一屏不该出现两套空态语言。
+ */
+function DayEmptyState({
+  isToday,
+  isFuture,
+  onPress,
+}: {
+  isToday: boolean;
+  isFuture: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <View className="px-5">
+      <View className="items-center justify-center" style={{ minHeight: 360, paddingBottom: 40 }}>
+        <View className="bg-fill-deep h-14 w-14 items-center justify-center rounded-full">
+          <Icon name={isFuture ? 'calendar-plus' : 'notebook-pen'} size="xl" tone="soft" />
+        </View>
+        <Subhead className="mt-4 text-center">
+          {isFuture ? '这天还没安排' : isToday ? '今天吃了什么？' : '这天吃了什么？'}
+        </Subhead>
+        <Caption className="mt-1.5 text-center" style={{ maxWidth: 250 }}>
+          {isFuture ? '提前挂上想做的菜，到时不用现想吃什么。' : '写一句，或者直接拍张照。'}
+        </Caption>
+        <View className="mt-5">
+          <Button onPress={onPress}>{isFuture ? '安排一道' : '记一笔'}</Button>
+        </View>
+      </View>
+    </View>
   );
 }
 
