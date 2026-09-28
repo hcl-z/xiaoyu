@@ -176,7 +176,6 @@ export function RecipesScreen() {
                 {rows.map((r) => (
                   <ListRow
                     key={r.slug}
-                    label={r.title}
                     onPress={() => router.push(`/recipes/${r.slug}`)}
                     leading={<RecipeThumb recipe={r} size={48} />}
                     title={

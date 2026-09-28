@@ -155,10 +155,35 @@ export function ListGroup({ children, className }: { children: ReactNode; classN
 
 export type Accessory = 'chevron' | 'check' | 'none';
 
+/**
+ * 把列表行里的文字拼成一句话。
+ * 原生只会把行内第一段文字交给读屏，副标题、备注和右侧数值全都读不到，
+ * 所以行的朗读文案由这里自己拼；拼不出来（遇到非文本节点）就返回 null，
+ * 交回系统默认行为。
+ */
+function plainText(node: ReactNode): string | null {
+  if (node === null || node === undefined || typeof node === 'boolean') return '';
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) {
+    const parts: string[] = [];
+    for (const child of node) {
+      const part = plainText(child);
+      if (part === null) return null;
+      parts.push(part);
+    }
+    return parts.join('');
+  }
+  if (isValidElement(node)) {
+    return plainText((node.props as { children?: ReactNode }).children);
+  }
+  return null;
+}
+
 export function ListRow({
   leading,
   title,
   subtitle,
+  note,
   value,
   trailing,
   accessory = 'none',
@@ -173,18 +198,27 @@ export function ListRow({
   leading?: ReactNode;
   title: ReactNode;
   subtitle?: ReactNode;
+  /**
+   * 副标题下面的一段正文。列表行默认只给一行副标题，装不下用户自己写下的
+   * 心得；这里给到三行，再长就交给点进去的那一页。
+   */
+  note?: ReactNode;
   value?: ReactNode;
   trailing?: ReactNode;
   accessory?: Accessory;
   onPress?: () => void;
   destructive?: boolean;
   selected?: boolean;
+  /** 朗读文案的兜底覆盖；默认由 title / subtitle / note / value 拼出来 */
   label?: string;
   className?: string;
   separator?: boolean;
 }) {
   const { animatedStyle, onPressIn, onPressOut } = usePressFeedback(0.99);
   const inset = leading ? 56 : 16;
+  const spoken = [title, subtitle, note, value].map(plainText);
+  const composed = spoken.every((part) => part !== null) ? spoken.filter(Boolean).join('，') : '';
+  const spokenLabel = label ?? (composed || undefined);
 
   const content = (
     <>
@@ -199,6 +233,11 @@ export function ListRow({
         {subtitle ? (
           <Caption numberOfLines={1} className="mt-0.5">
             {subtitle}
+          </Caption>
+        ) : null}
+        {note ? (
+          <Caption tone="soft" numberOfLines={3} className="mt-1 leading-relaxed">
+            {note}
           </Caption>
         ) : null}
       </View>
@@ -232,7 +271,7 @@ export function ListRow({
       <Pressable
         className="active:bg-tint/70 w-full"
         accessibilityRole="button"
-        accessibilityLabel={label ?? (typeof title === 'string' ? title : undefined)}
+        accessibilityLabel={spokenLabel}
         accessibilityState={{ selected }}
         onPress={onPress}
         onPressIn={onPressIn}

@@ -1,6 +1,6 @@
 /**
  * 菜谱详情：图片头叠内容；食材 / 步骤 / 记录三标签。
- * 食材可逐条勾选，记录页聚合这道菜的每一次打卡与历次笔记。
+ * 食材可逐条勾选，记录页把每一次打卡连同当时写下的心得按时间排开。
  */
 import { useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
@@ -102,8 +102,6 @@ export function RecipeDetailScreen() {
     void updateRecipe(recipe.slug, { ...recipe, favorite: !recipe.favorite });
   };
 
-  /** 只取有内容的笔记，最新的在前 */
-  const notes = history.history.filter((h) => h.note.trim().length > 0);
   const imageUri = resolveImageUrl(recipe.image);
 
   return (
@@ -299,7 +297,7 @@ export function RecipeDetailScreen() {
                 </Section>
               )
             ) : (
-              /* 记录页：做过的每一次，以及历次笔记。全部来自打卡数据 */
+              /* 记录页：做过的每一次都在这里，当时写下的心得就挂在它下面 */
               <View style={{ rowGap: 20 }}>
                 {upcoming.length > 0 ? (
                   <Section title="已安排" footer="到那天在「今日」确认，就计入制作次数">
@@ -312,30 +310,9 @@ export function RecipeDetailScreen() {
                           </View>
                         }
                         title={dayLabel(item.day)}
-                        subtitle={item.note || undefined}
+                        note={item.note || undefined}
                         accessory="chevron"
                         onPress={() => router.push(`/today?day=${item.day}`)}
-                      />
-                    ))}
-                  </Section>
-                ) : null}
-
-                {notes.length > 0 ? (
-                  <Section title="历次笔记" footer="打卡时写下的心得，最新的在前">
-                    {notes.map((item) => (
-                      <ListRow
-                        key={item.id}
-                        leading={
-                          <View className="h-[22px] w-[22px] items-center justify-center">
-                            <Icon name="notebook-pen" size="md" tone="accent" />
-                          </View>
-                        }
-                        title={
-                          <Body className="leading-relaxed" style={{ flexShrink: 1 }}>
-                            {item.note}
-                          </Body>
-                        }
-                        subtitle={dayLabel(item.day)}
                       />
                     ))}
                   </Section>
@@ -373,10 +350,10 @@ export function RecipeDetailScreen() {
                     {history.history.map((item) => (
                       <ListRow
                         key={item.id}
-                        label={`查看 ${item.day}`}
                         leading={<CheckCircle done size={22} />}
                         title={dayLabel(item.day)}
                         subtitle={item.time || undefined}
+                        note={item.note || undefined}
                         accessory="chevron"
                         onPress={() => router.push(`/today?day=${item.day}`)}
                       />

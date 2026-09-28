@@ -504,7 +504,7 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
             </Section>
           )}
 
-          {/* 这次做的心得：绑定了菜谱时会聚合到详情页的「历次笔记」 */}
+          {/* 这次做的心得：绑定了菜谱时会挂在详情页那一次记录下面 */}
           <Section
             tone="deep"
             title={isPlan ? '备忘' : '这次的笔记'}
@@ -512,7 +512,7 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
               selected
                 ? isPlan
                   ? '要买什么、提前做什么，写在这里'
-                  : `会出现在「${selected.title}」的历次笔记里`
+                  : `会出现在「${selected.title}」那天的记录里`
                 : '火候、用量、下次想改什么——可空着'
             }>
             <View className="px-4 py-3">

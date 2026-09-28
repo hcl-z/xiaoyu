@@ -394,7 +394,7 @@ export function useTaxonomies() {
 /* ------------------------------------------------------------------ */
 /* 单道菜谱的历史                                                        */
 /* ------------------------------------------------------------------ */
-/** 详情页的「做过的记录」与「历次笔记」 */
+/** 详情页「做过的记录」：每一次打卡，以及挂在它下面的那条心得 */
 export function useRecipeHistory(slug: string | undefined) {
   const [data, setData] = useState<RecipeHistory>(EMPTY_HISTORY);
   const [loading, setLoading] = useState(Boolean(slug));
