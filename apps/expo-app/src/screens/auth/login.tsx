@@ -116,7 +116,7 @@ export function LoginScreen() {
               }}
               align="left"
               placeholder="name@example.com"
-              inputMode="text"
+              inputMode="email"
               label="邮箱"
               editable={!busy}
               className="flex-1"
@@ -132,6 +132,7 @@ export function LoginScreen() {
               align="left"
               placeholder="输入密码"
               label="密码"
+              secure
               editable={!busy}
               className="flex-1"
             />

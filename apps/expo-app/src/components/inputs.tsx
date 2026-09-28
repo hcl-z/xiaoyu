@@ -56,10 +56,11 @@ export function FieldRow({
 }
 
 /** Web 的 inputMode 在原生映射到 keyboardType */
-const KEYBOARD: Record<'text' | 'numeric' | 'decimal', KeyboardTypeOptions> = {
+const KEYBOARD: Record<'text' | 'numeric' | 'decimal' | 'email', KeyboardTypeOptions> = {
   text: 'default',
   numeric: 'number-pad',
   decimal: 'decimal-pad',
+  email: 'email-address',
 };
 
 export type TextFieldProps = {
@@ -67,10 +68,15 @@ export type TextFieldProps = {
   onChange: (v: string) => void;
   placeholder?: string;
   align?: 'right' | 'left';
-  inputMode?: 'text' | 'numeric' | 'decimal';
+  inputMode?: 'text' | 'numeric' | 'decimal' | 'email';
   autoFocus?: boolean;
   /** 禁用 / 只读态 */
   editable?: boolean;
+  /**
+   * 密码等敏感输入：字符隐藏，并顺带关掉自动大写与自动纠错。
+   * 邮箱靠 inputMode="email" 拿到同一套处理，不用再手写键盘类型。
+   */
+  secure?: boolean;
   /** 校验失败态 */
   error?: boolean;
   className?: string;
@@ -97,6 +103,7 @@ export function TextField({
   inputMode,
   autoFocus,
   editable = true,
+  secure,
   error = false,
   className,
   label,
@@ -122,6 +129,9 @@ export function TextField({
       keyboardType={inputMode ? KEYBOARD[inputMode] : undefined}
       autoFocus={autoFocus}
       editable={editable}
+      secureTextEntry={secure}
+      autoCapitalize={secure || inputMode === 'email' ? 'none' : undefined}
+      autoCorrect={secure || inputMode === 'email' ? false : undefined}
       accessibilityLabel={label ?? placeholder}
       accessibilityState={{ disabled: !editable }}
       onFocus={() => setFocused(true)}

@@ -86,6 +86,7 @@ export function RegisterScreen() {
             }}
             align="left"
             placeholder="name@example.com"
+            inputMode="email"
             label="邮箱"
             editable={!busy}
             onBlur={() => setEmailTouched(true)}
@@ -103,6 +104,7 @@ export function RegisterScreen() {
             align="left"
             placeholder="设置密码"
             label="密码"
+            secure
             editable={!busy}
             className="flex-1"
           />
