@@ -14,7 +14,7 @@ import { useCheckinSheet } from '@/chrome/checkin';
 import { Button, IconButton } from '@/components/button';
 import { CheckCircle, Segmented } from '@/components/controls';
 import { Icon } from '@/components/icon';
-import { RemoteImage } from '@/components/remote-image';
+import { RemoteImage, useImageStatus } from '@/components/remote-image';
 import { Badge, EmptyState, ListRow, Section, Skeleton } from '@/components/surfaces';
 import { Body, Caption, Micro, Title } from '@/components/text';
 import { resolveImageUrl } from '@/data/client';
@@ -52,6 +52,10 @@ export function RecipeDetailScreen() {
         .sort((a, b) => a.day.localeCompare(b.day) || a.time.localeCompare(b.time)),
     [history.planned]
   );
+
+  /** 也放在提前 return 之前：头图有没有到位，压暗带要跟着判断 */
+  const imageUri = resolveImageUrl(recipe?.image);
+  const { hasPhoto, reportLoaded } = useImageStatus(imageUri);
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
@@ -102,8 +106,6 @@ export function RecipeDetailScreen() {
     void updateRecipe(recipe.slug, { ...recipe, favorite: !recipe.favorite });
   };
 
-  const imageUri = resolveImageUrl(recipe.image);
-
   return (
     <View className="bg-paper flex-1">
       <ScrollView
@@ -117,6 +119,7 @@ export function RecipeDetailScreen() {
               uri={imageUri}
               style={{ width: '100%', height: '100%' }}
               placeholder={<Icon name="book-open" size="xl" tone="accent" />}
+              onStatusChange={reportLoaded}
             />
           </View>
           <View className="absolute top-0 right-0 left-0" style={{ paddingTop: insets.top }}>
@@ -143,10 +146,13 @@ export function RecipeDetailScreen() {
               }
             />
           </View>
-          <View
-            className="absolute right-0 bottom-0 left-0"
-            style={{ height: 64, backgroundColor: 'rgba(0,0,0,0.22)' }}
-          />
+          {/* 这条压暗带只为把照片收进下面的纸面；没有照片时留着就是一道脏边 */}
+          {hasPhoto ? (
+            <View
+              className="absolute right-0 bottom-0 left-0"
+              style={{ height: 64, backgroundColor: 'rgba(0,0,0,0.22)' }}
+            />
+          ) : null}
         </View>
 
         <View className="bg-paper rounded-t-sheet -mt-4 px-5 pt-5" style={{ rowGap: 20 }}>

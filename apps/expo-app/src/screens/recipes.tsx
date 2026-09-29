@@ -11,7 +11,7 @@ import { Icon } from '@/components/icon';
 import { IconButton } from '@/components/button';
 import { Pill } from '@/components/controls';
 import { SearchField } from '@/components/inputs';
-import { RemoteImage } from '@/components/remote-image';
+import { RemoteImage, useImageStatus } from '@/components/remote-image';
 import { EmptyState, ListRow, Section, Skeleton } from '@/components/surfaces';
 import { Body, Caption, Micro, Title } from '@/components/text';
 import { resolveImageUrl } from '@/data/client';
@@ -203,33 +203,59 @@ export function RecipesScreen() {
 }
 
 function FeaturedCard({ recipe, onPress }: { recipe: Recipe; onPress: () => void }) {
+  const uri = resolveImageUrl(recipe.image);
+  const { hasPhoto, reportLoaded } = useImageStatus(uri);
+  /**
+   * 图挂了就不能再按「照片」来排版：黑色蒙层压在半透明底上会糊成一块脏面，
+   * 白字也没了着落。没有真图时退回浅色封面——撤掉蒙层，字换成墨色。
+   */
+  const label = [
+    recipe.title,
+    '做得最多',
+    `${recipe.minutes} 分钟`,
+    recipe.cooked ? `做过 ${recipe.cooked} 次` : null,
+    recipe.favorite ? '已收藏' : null,
+  ]
+    .filter(Boolean)
+    .join('，');
+
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={recipe.title}
+      accessibilityLabel={label}
       onPress={onPress}
       className="rounded-group h-44 w-full overflow-hidden active:opacity-90"
       style={elevationStyle.card}>
       <RemoteImage
-        uri={resolveImageUrl(recipe.image)}
+        uri={uri}
         style={{ width: '100%', height: '100%' }}
-        placeholder={<Icon name="book-open" size="xl" tone="accent" />}
-      />
-      {/* Web 用自下而上的黑色渐变；原生用三层递进的半透明面近似 */}
-      <View className="absolute inset-0" style={{ backgroundColor: 'rgba(0,0,0,0.16)' }} />
-      <View
-        className="absolute right-0 bottom-0 left-0"
-        style={{ height: '55%', backgroundColor: 'rgba(0,0,0,0.34)' }}
+        onStatusChange={reportLoaded}
       />
 
+      {hasPhoto ? (
+        /* Web 用自下而上的黑色渐变；原生用两层递进的半透明面近似 */
+        <>
+          <View className="absolute inset-0" style={{ backgroundColor: 'rgba(0,0,0,0.16)' }} />
+          <View
+            className="absolute right-0 bottom-0 left-0"
+            style={{ height: '55%', backgroundColor: 'rgba(0,0,0,0.34)' }}
+          />
+        </>
+      ) : (
+        /* 浅色封面：把书页图标挪到左上角，和右上角的收藏徽章站住两个角 */
+        <View className="absolute top-4 left-4">
+          <Icon name="book-open" size="xl" tone="accent" />
+        </View>
+      )}
+
       <View className="absolute right-0 bottom-0 left-0 p-4">
-        <Micro tone="invert">做得最多</Micro>
+        <Micro tone={hasPhoto ? 'invert' : 'accent'}>做得最多</Micro>
         <View className="mt-1">
-          <Title tone="invert">{recipe.title}</Title>
+          <Title tone={hasPhoto ? 'invert' : 'ink'}>{recipe.title}</Title>
         </View>
         <View className="mt-1 flex-row items-center gap-3">
-          <Fact icon="clock" text={`${recipe.minutes} 分钟`} />
-          <Caption size="text-caption" tone="invert" tabular>
+          <Fact icon="clock" text={`${recipe.minutes} 分钟`} tone={hasPhoto ? 'invert' : 'soft'} />
+          <Caption size="text-caption" tone={hasPhoto ? 'invert' : 'soft'} tabular>
             {`做过 ${recipe.cooked} 次`}
           </Caption>
         </View>
@@ -244,11 +270,19 @@ function FeaturedCard({ recipe, onPress }: { recipe: Recipe; onPress: () => void
   );
 }
 
-function Fact({ icon, text }: { icon: 'clock'; text: string }) {
+function Fact({
+  icon,
+  text,
+  tone = 'invert',
+}: {
+  icon: 'clock';
+  text: string;
+  tone?: 'invert' | 'soft';
+}) {
   return (
     <View className="flex-row items-center gap-1">
-      <Icon name={icon} size="sm" tone="invert" />
-      <Caption size="text-caption" tone="invert" tabular>
+      <Icon name={icon} size="sm" tone={tone} />
+      <Caption size="text-caption" tone={tone} tabular>
         {text}
       </Caption>
     </View>
