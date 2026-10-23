@@ -21,7 +21,9 @@
     "format:check:expo": "pnpm --filter expo-app format:check",
     "check": "pnpm run lint && pnpm run typecheck",
     "check:all": "pnpm -r --if-present lint && pnpm -r --if-present typecheck",
-    "check:expo": "pnpm --filter expo-app check"
+    "check:expo": "pnpm --filter expo-app check",
+    "release-android": "node scripts/release-android.mjs",
+    "release-ios": "node scripts/release-ios.mjs"
   },
   "pnpm": {
     "overrides": {

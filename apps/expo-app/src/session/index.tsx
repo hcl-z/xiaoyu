@@ -17,7 +17,15 @@ import {
 } from 'react';
 
 import { DEMO_EMAIL } from '@/domain/account';
-import { apiGet, apiPost, setAuthToken, setUnauthorizedHandler } from '@/data/client';
+import {
+  apiGet,
+  apiPost,
+  getApiBaseUrl,
+  setApiBaseUrl,
+  setAuthToken,
+  setUnauthorizedHandler,
+} from '@/data/client';
+import { readApiBaseOverride, writeApiBaseOverride } from '@/data/api-base';
 import { resetDataCaches } from '@/data/store';
 import type { SessionUser } from '@/data/types';
 
@@ -25,6 +33,7 @@ import { clearToken, readToken, writeToken } from './storage';
 
 export type SessionStatus = 'loading' | 'signedOut' | 'signedIn';
 export type AuthOutcome = { ok: true } | { ok: false; error: string };
+export type ServerOutcome = { ok: true; effective: string } | { ok: false; error: string };
 
 type SessionValue = {
   status: SessionStatus;
@@ -35,6 +44,14 @@ type SessionValue = {
   signIn: (email: string, password: string) => Promise<AuthOutcome>;
   register: (name: string, email: string, password: string) => Promise<AuthOutcome>;
   signOut: () => Promise<void>;
+  /** 当前生效的服务器地址（我的 › 服务器地址里展示用） */
+  serverUrl: string;
+  /**
+   * 切换服务器地址。令牌是发给某一台服务器的，换服务器等于换账号空间，
+   * 所以切换后一律清空本地会话，回到欢迎页重新进入。
+   * 传空字符串则恢复编译期默认地址。
+   */
+  switchServer: (input: string) => Promise<ServerOutcome>;
 };
 
 const SessionContext = createContext<SessionValue | null>(null);
@@ -51,6 +68,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<SessionStatus>('loading');
   const [user, setUser] = useState<SessionUser | null>(null);
   const [busy, setBusy] = useState(false);
+  const [serverUrl, setServerUrl] = useState(getApiBaseUrl());
 
   /** 清空令牌与内存里的数据，下一位登录者不会看到上一位的记录 */
   const clearLocalSession = useCallback(async () => {
@@ -62,6 +80,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let alive = true;
     void (async () => {
+      // 先恢复用户上次设置的服务器地址，再发第一个网络请求
+      const savedBase = await readApiBaseOverride();
+      if (!alive) return;
+      if (savedBase) setApiBaseUrl(savedBase);
       const token = await readToken();
       if (!alive) return;
       if (!token) {
@@ -144,6 +166,27 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setBusy(false);
   }, [clearLocalSession]);
 
+  const switchServer = useCallback(async (input: string): Promise<ServerOutcome> => {
+    const trimmed = input.trim();
+    if (!trimmed) {
+      // 恢复默认：清掉覆盖值，回到编译期默认地址
+      setApiBaseUrl(null);
+      await writeApiBaseOverride(null);
+    } else {
+      const effective = setApiBaseUrl(trimmed);
+      if (!effective) return { ok: false, error: '地址需要以 http:// 或 https:// 开头' };
+      await writeApiBaseOverride(effective);
+    }
+    // 令牌与缓存都只对旧服务器有效，一并清空回到入口
+    setAuthToken(null);
+    resetDataCaches();
+    await clearToken();
+    setUser(null);
+    setStatus('signedOut');
+    setServerUrl(getApiBaseUrl());
+    return { ok: true, effective: getApiBaseUrl() };
+  }, []);
+
   const value = useMemo<SessionValue>(
     () => ({
       status,
@@ -154,8 +197,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       signIn,
       register,
       signOut,
+      serverUrl,
+      switchServer,
     }),
-    [status, user, busy, signInDemo, signIn, register, signOut]
+    [status, user, busy, signInDemo, signIn, register, signOut, serverUrl, switchServer]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

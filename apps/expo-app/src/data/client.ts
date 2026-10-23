@@ -34,6 +34,32 @@ export const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL ?? DEFAULT_BAS
   ''
 );
 
+/**
+ * 运行时可切换的服务器地址（我的 › 服务器地址）。
+ * 家庭部署的后端 IP 会随路由器变化，编译期写死一个地址撑不住真实使用，
+ * 所以允许装机后在界面上改；为空时回落到上面的默认值。
+ */
+let runtimeBaseUrl: string | null = null;
+
+/** 设置运行时服务器地址；返回生效地址（输入不合法时返回 null 且不改动） */
+export function setApiBaseUrl(input: string | null): string | null {
+  if (input === null) {
+    runtimeBaseUrl = null;
+    return getApiBaseUrl();
+  }
+  const normalized = input.trim().replace(/\/+$/, '');
+  if (!/^https?:\/\/.+\..+/.test(normalized) && !/^https?:\/\/[^.]+(:\d+)?$/.test(normalized)) {
+    return null;
+  }
+  runtimeBaseUrl = normalized;
+  return normalized;
+}
+
+/** 当前生效的 API 根地址：运行时设置优先，其次编译期默认值 */
+export function getApiBaseUrl(): string {
+  return runtimeBaseUrl ?? API_BASE_URL;
+}
+
 /** 设计约定：网络等待超过这个时间就不再让界面等下去 */
 const READ_TIMEOUT_MS = 4500;
 const WRITE_TIMEOUT_MS = 12000;
@@ -69,7 +95,8 @@ export function setUnauthorizedHandler(handler: (() => void) | null) {
 }
 
 export function apiUrl(path: string): string {
-  return /^https?:\/\//.test(path) ? path : `${API_BASE_URL}${path}`;
+  const base = getApiBaseUrl();
+  return /^https?:\/\//.test(path) ? path : `${base}${path}`;
 }
 
 /** 菜谱图存的是站内相对路径，取图时要补上 API 主机 */
@@ -93,7 +120,7 @@ export function isProtectedImage(uri: string): boolean {
   // 相对路径一定是站内；绝对地址要比对一下主机，避免把令牌发给第三方
   if (uri.startsWith('/')) return uri.startsWith('/api/photos/');
   try {
-    return new URL(uri).origin === new URL(API_BASE_URL).origin && uri.includes('/api/photos/');
+    return new URL(uri).origin === new URL(getApiBaseUrl()).origin && uri.includes('/api/photos/');
   } catch {
     return false;
   }
