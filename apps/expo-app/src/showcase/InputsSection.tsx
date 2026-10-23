@@ -2,8 +2,9 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { FieldRow, Pill, SearchField, TextArea, TextField } from '@/components';
-import { Caption } from '@/components/text';
+import { FormGroup, FormRow, Pill, SearchField, TextArea, TextField } from '@/components';
+import { Icon } from '@/components/icon';
+import { Body, Caption } from '@/components/text';
 import { searchSuggestions } from '@/fixtures/showcase';
 
 import { ShowcaseStage } from './gallery';
@@ -17,28 +18,55 @@ export function InputsSection() {
   const [query, setQuery] = useState('');
 
   return (
-    <View className="gap-4">
-      <ShowcaseStage
-        label="GROUPED FORM"
-        caption="适合设置页与轻量编辑"
-        contentClassName="overflow-hidden p-0">
-        <FieldRow label="菜名">
+    <View className="gap-5">
+      <ShowcaseStage label="TEXT FIELDS" caption="填充行 · 聚焦只加描边">
+        <FormGroup className="px-0">
           <TextField value={name} onChange={setName} label="菜名" />
-        </FieldRow>
-        <FieldRow label="份数" hint="1–9">
           <TextField
             value={servings}
             onChange={setServings}
             inputMode="numeric"
             label="份数"
-            className="max-w-[64px]"
+            placeholder="2"
           />
-        </FieldRow>
-        <FieldRow label="分类">
           <TextField value={empty} onChange={setEmpty} placeholder="选择分类" label="分类" />
-        </FieldRow>
+          <TextField value={invalid} onChange={setInvalid} label="用时" placeholder="分钟" error />
+        </FormGroup>
       </ShowcaseStage>
-      <ShowcaseStage label="SEARCH" caption="输入后可一键清除" tone="paper">
+
+      <ShowcaseStage label="STATES" caption="默认 / 聚焦 / 出错 / 禁用">
+        <FormGroup className="px-0">
+          {/*
+           * 这一组是状态对照表，不是真表单：不 autoFocus、不抢焦点，
+           * 聚焦态直接用 FormRow 的 state 固定展示，否则这里永远看不到描边。
+           */}
+          <TextField value="" onChange={() => {}} placeholder="未填写" label="空态" />
+          <FormRow label="聚焦" state="focus">
+            <Body weight="font-medium">name@example.com</Body>
+          </FormRow>
+          <TextField value="格式不对" onChange={() => {}} label="出错" error />
+          <TextField value="不可编辑" onChange={() => {}} label="禁用" editable={false} />
+        </FormGroup>
+      </ShowcaseStage>
+
+      <ShowcaseStage label="SELECT ROWS" caption="同行形状，整行可点">
+        <FormGroup className="px-0">
+          <FormRow
+            label="分类"
+            onPress={() => {}}
+            trailing={<Icon name="chevron-right" size="md" tone="muted" />}>
+            <Body weight="font-medium">主食</Body>
+          </FormRow>
+          <FormRow
+            label="收藏"
+            onPress={() => {}}
+            trailing={<Icon name="chevron-right" size="md" tone="muted" />}>
+            <Body tone="muted">未收藏</Body>
+          </FormRow>
+        </FormGroup>
+      </ShowcaseStage>
+
+      <ShowcaseStage label="SEARCH" caption="与输入行同一套形状">
         <View className="gap-3">
           <SearchField value={query} onChange={setQuery} placeholder="搜索菜谱" />
           <View className="flex-row flex-wrap gap-2">
@@ -50,35 +78,13 @@ export function InputsSection() {
           </View>
         </View>
       </ShowcaseStage>
-      <ShowcaseStage label="TEXT AREA" caption="多行说明">
+
+      <ShowcaseStage label="TEXT AREA" caption="随内容增高">
         <View className="gap-2">
           <TextArea value={note} onChange={setNote} rows={4} label="做法" />
           <Caption size="text-[11px]" className="text-right">
             {note.length} 字
           </Caption>
-        </View>
-      </ShowcaseStage>
-      <ShowcaseStage label="VALIDATION" caption="空态、错误与禁用" tone="tint">
-        <View className="gap-3">
-          <View className="bg-card rounded-group px-4">
-            <FieldRow label="空态">
-              <TextField value={empty} onChange={setEmpty} placeholder="未填写" label="空态" />
-            </FieldRow>
-            <FieldRow label="出错" hint="至少为 1">
-              <TextField
-                value={invalid}
-                onChange={setInvalid}
-                inputMode="numeric"
-                error
-                label="出错示例"
-                className="max-w-[64px]"
-              />
-            </FieldRow>
-            <FieldRow label="禁用">
-              <TextField value="不可编辑" onChange={() => {}} editable={false} label="禁用示例" />
-            </FieldRow>
-          </View>
-          <SearchField value="" onChange={() => {}} editable={false} placeholder="禁用搜索" />
         </View>
       </ShowcaseStage>
     </View>

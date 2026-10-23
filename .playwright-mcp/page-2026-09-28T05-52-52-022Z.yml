@@ -1,0 +1,20 @@
+- generic [ref=e14]:
+  - generic [ref=e15]:
+    - generic [ref=e16]: daily+
+    - button "先逛逛" [ref=e17] [cursor=pointer]
+  - generic [ref=e19]:
+    - heading "把每一天， 煮成值得记录的样子" [level=1] [ref=e27]
+    - generic [ref=e28]: daily + 收好你的菜谱，也收好每一餐认真吃过的证据。
+    - generic [ref=e32]:
+      - generic [ref=e37]:
+        - heading "菜谱库" [level=1] [ref=e38]
+        - generic [ref=e39]: 分类、用时、可勾选食材
+      - generic [ref=e45]:
+        - heading "每日打卡" [level=1] [ref=e46]
+        - generic [ref=e47]: 自由记录与连续天数
+      - generic [ref=e52]:
+        - heading "习惯回顾" [level=1] [ref=e53]
+        - generic [ref=e54]: 28 天热力图
+  - generic [ref=e55]:
+    - button "开始使用" [ref=e57] [cursor=pointer]
+    - button "我已有账号，登录" [ref=e59] [cursor=pointer]

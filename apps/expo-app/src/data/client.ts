@@ -83,6 +83,22 @@ export function authedImageSource(uri: string): { uri: string; headers?: Record<
   return authToken ? { uri, headers: { Authorization: `Bearer ${authToken}` } } : { uri };
 }
 
+/**
+ * 这张图是不是需要会话才能读。
+ * 站内上传的图片（/api/photos/<id>）按会话校验归属；
+ * /images/* 这类静态资源与外部 URL 不需要，也不该多带一个 Authorization 头。
+ */
+export function isProtectedImage(uri: string): boolean {
+  if (!uri) return false;
+  // 相对路径一定是站内；绝对地址要比对一下主机，避免把令牌发给第三方
+  if (uri.startsWith('/')) return uri.startsWith('/api/photos/');
+  try {
+    return new URL(uri).origin === new URL(API_BASE_URL).origin && uri.includes('/api/photos/');
+  } catch {
+    return false;
+  }
+}
+
 function buildHeaders(init?: RequestInit): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: 'application/json',

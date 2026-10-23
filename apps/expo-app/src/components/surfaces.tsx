@@ -17,13 +17,14 @@ import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
 
-import { usePressFeedback } from '@/motion';
-import { alpha, color, elevationStyle, hairline, motion as mt, radius } from '@/theme';
+import { StaggerItem, usePressFeedback } from '@/motion';
+import { alpha, color, elevationStyle, hairline, layout, motion as mt, radius } from '@/theme';
 
 import { Icon } from './icon';
 import { Body, Caption, Micro } from './text';
@@ -192,6 +193,14 @@ export function ListRow({
   selected = false,
   label,
   className,
+  /**
+   * 错峰入场的序号。列表换批（筛选、搜索）时由调用方从 0 开始编号，
+   * 行自己完成落位——这样 ListGroup 的「非最后一行画分隔线」仍然成立，
+   * 因为每一行仍是 ListGroup 的直接子节点。传入即启用。
+   */
+  staggerIndex,
+  /** 换批身份；变化时重播错峰。通常传筛选条件字符串 */
+  staggerKey,
   /** 由 ListGroup 注入：非最后一行画分隔线 */
   separator = false,
 }: {
@@ -212,9 +221,11 @@ export function ListRow({
   /** 朗读文案的兜底覆盖；默认由 title / subtitle / note / value 拼出来 */
   label?: string;
   className?: string;
+  staggerIndex?: number;
+  staggerKey?: string | number;
   separator?: boolean;
 }) {
-  const { animatedStyle, onPressIn, onPressOut } = usePressFeedback(0.99);
+  const { animatedStyle, onPressIn, onPressOut } = usePressFeedback(mt.pressScale.block);
   const inset = leading ? 56 : 16;
   const spoken = [title, subtitle, note, value].map(plainText);
   const composed = spoken.every((part) => part !== null) ? spoken.filter(Boolean).join('，') : '';
@@ -253,7 +264,10 @@ export function ListRow({
   );
 
   const body = (
-    <View className={cx('min-h-11 w-full flex-row items-center gap-3 px-4 py-3', className)}>
+    <View
+      className={cx('w-full flex-row items-center gap-3 px-4', className)}
+      // 与 FormRow 同一行高：同一屏里的列表行与输入行不该差一截
+      style={{ minHeight: layout.rowMin, paddingVertical: 10 }}>
       {content}
       {separator ? (
         <View
@@ -266,10 +280,10 @@ export function ListRow({
 
   if (!onPress) return body;
 
-  return (
+  const interactive = (
     <Animated.View style={animatedStyle}>
       <Pressable
-        className="active:bg-tint/70 w-full"
+        className="active:bg-fill/60 w-full"
         accessibilityRole="button"
         accessibilityLabel={spokenLabel}
         accessibilityState={{ selected }}
@@ -280,6 +294,17 @@ export function ListRow({
       </Pressable>
     </Animated.View>
   );
+
+  // 错峰入场：key 变了就重挂载，让换批后的列表从第 0 项重新铺开
+  if (staggerIndex !== undefined) {
+    return (
+      <StaggerItem key={staggerKey} index={staggerIndex}>
+        {interactive}
+      </StaggerItem>
+    );
+  }
+
+  return interactive;
 }
 
 /** 卡片内的蓝色文字动作行 */
@@ -298,7 +323,7 @@ export function ActionRow({
   disabled?: boolean;
   separator?: boolean;
 }) {
-  const { animatedStyle, onPressIn, onPressOut } = usePressFeedback(0.99);
+  const { animatedStyle, onPressIn, onPressOut } = usePressFeedback(mt.pressScale.block);
 
   return (
     <Animated.View style={animatedStyle}>
@@ -311,7 +336,7 @@ export function ActionRow({
         onPressOut={onPressOut}
         className={cx(
           'min-h-11 w-full flex-row items-center justify-center gap-2 px-4 py-3',
-          !disabled && 'active:bg-tint/70',
+          !disabled && 'active:bg-fill/60',
           disabled && 'opacity-35'
         )}>
         {icon}
@@ -330,13 +355,29 @@ export function TrailingChevron() {
   return <Icon name="chevron-right" size="md" tone="muted" className="shrink-0 opacity-70" />;
 }
 
-/** 单选行右侧的蓝色对勾 */
+/**
+ * 单选行右侧的蓝色对勾。
+ * 选中 / 取消都要有过程：挂载时淡入而非硬出，配合行自身的状态切换。
+ */
 export function Checkmark({ on }: { on: boolean }) {
-  if (!on) return null;
+  const reduceMotion = useReducedMotion();
+  const progress = useSharedValue(on ? 1 : 0);
+
+  useEffect(() => {
+    progress.set(withTiming(on ? 1 : 0, { duration: reduceMotion ? 0 : 160 }));
+  }, [progress, on, reduceMotion]);
+
+  const animated = useAnimatedStyle(() => ({ opacity: progress.get() }));
+
+  // 未选中时不再占据可访问性焦点——空视图对读屏没有意义
   return (
-    <View className="shrink-0">
+    <Animated.View
+      style={animated}
+      className="shrink-0"
+      accessibilityElementsHidden={!on}
+      importantForAccessibility={on ? 'auto' : 'no-hide-descendants'}>
       <Icon name="check" size="md" tone="accent" strokeWidth={2.4} />
-    </View>
+    </Animated.View>
   );
 }
 
@@ -394,7 +435,11 @@ export function Badge({
 /* ------------------------------------------------------------------ */
 /* Skeleton · EmptyState                                                */
 /* ------------------------------------------------------------------ */
-/** Web 的 animate-pulse 在原生用 Reanimated 呼吸 */
+/**
+ * Web 的 animate-pulse 在原生用 Reanimated 呼吸。
+ * 持续脉动在前庭上比一次性动画更敏感：开了「减弱动态效果」时
+ * 换成静止占位块，骨架屏的「正在加载」语义不靠呼吸保留。
+ */
 export function Skeleton({
   className,
   rounded = radius.control,
@@ -404,9 +449,14 @@ export function Skeleton({
   rounded?: number;
   height?: number;
 }) {
+  const reduceMotion = useReducedMotion();
   const opacity = useSharedValue(1);
 
   useEffect(() => {
+    if (reduceMotion) {
+      opacity.set(0.7);
+      return;
+    }
     opacity.set(
       withRepeat(
         withTiming(0.45, { duration: (mt.pulse * 1000) / 2, easing: Easing.inOut(Easing.ease) }),
@@ -414,7 +464,7 @@ export function Skeleton({
         true
       )
     );
-  }, [opacity]);
+  }, [opacity, reduceMotion]);
 
   const animated = useAnimatedStyle(() => ({ opacity: opacity.get() }));
 

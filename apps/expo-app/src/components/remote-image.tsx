@@ -5,9 +5,15 @@
  * RN 默认什么都不画，列表行里就留一个空洞，卡片上只剩一层渐变。
  * 所以这里把「取不到图」收敛成一个显式状态：失败就换调用方给的占位，
  * 界面形状不塌，也不必每个用到图的地方各写一遍 onError。
+ *
+ * 受会话保护的图（/api/photos/…）必须带头取：服务端按会话校验归属，
+ * 裸 URL 会 401。这件事在组件内部自动完成，调用方只管给地址，
+ * 否则每多一处用图的地方就多一次忘带 token 的机会。
  */
 import { useState, type ReactNode } from 'react';
 import { Image, View, type ImageStyle, type StyleProp, type ViewStyle } from 'react-native';
+
+import { authedImageSource, isProtectedImage } from '@/data/client';
 
 /**
  * 图到底有没有到位——压在图片上写字的卡片据此切换蒙层与字色。
@@ -48,6 +54,8 @@ export function RemoteImage({
     setFailedUri(null);
   }
   const failed = uri != null && failedUri === uri;
+  // 受保护图自动带令牌；静态资源与外部图照旧裸取
+  const source = uri && isProtectedImage(uri) ? authedImageSource(uri) : { uri: uri ?? '' };
 
   if (!uri || failed) {
     return (
@@ -59,7 +67,7 @@ export function RemoteImage({
 
   return (
     <Image
-      source={{ uri }}
+      source={source}
       resizeMode="cover"
       onLoad={() => onStatusChange?.(true)}
       onError={() => {

@@ -37,9 +37,9 @@ import {
   todayISO,
   weekOf,
 } from '@/domain/date';
-import { layoutTransition, usePressFeedback } from '@/motion';
+import { layoutTransition, SwapIn, usePressFeedback, useSequenceDirection } from '@/motion';
 import { useSession } from '@/session';
-import { alpha, color, hairline, radius } from '@/theme';
+import { alpha, color, hairline, motion as mt, radius } from '@/theme';
 
 import { useTabScreenPadding } from './layout-metrics';
 
@@ -193,6 +193,14 @@ export function TodayScreen() {
     router.setParams({ day: next === today ? undefined : next });
   };
 
+  /**
+   * 日期切换方向：ISO 日期字符串的字典序就是时间序，
+   * 所以往后一天新内容从右侧进、往前一天从左侧进。
+   * 与 Tab 的 useSwapDirection 同一套「props 变化时调整 state」模式，
+   * 但日期序列是无限的，比字典序而不是查数组下标。
+   */
+  const dayDirection = useSequenceDirection(day);
+
   const monthLabel = `${parseDay(week[0]).getMonth() + 1} 月`;
   const dateLabel = isToday
     ? `${parseDay(day).getMonth() + 1} 月 ${parseDay(day).getDate()} 日 · 星期${WEEKDAYS[parseDay(day).getDay()]}`
@@ -324,114 +332,117 @@ export function TodayScreen() {
       </View>
 
       {/* 时间轴：记录与未确认的安排共用一条轨道，按时间排开 */}
-      {hasEntries || showSkeleton ? (
-        <View className="px-5">
-          <SectionHeader
-            label={headLabel}
-            trailing={showSkeleton ? null : <Caption tabular>{headSummary}</Caption>}
-          />
-          <Card padded={false}>
-            <View style={{ paddingTop: 4, paddingBottom: 5 }}>
-              {showSkeleton ? (
-                <TimelineSkeleton />
-              ) : (
-                nodes.map((node, i) => {
-                  const line = railLine(i, nodes.length);
-                  if (node.kind === 'now') return <NowRow key="now" line={line} />;
-                  return (
-                    <TimelineRow
-                      key={node.item.id}
-                      item={node.item}
-                      line={line}
-                      separator={node.separator}
-                      trailing={
-                        node.item.planned ? (
-                          isFuture ? (
-                            <Badge tone="lake">计划</Badge>
+      {/* 整块日期相关的内容跟着 day 换批：往后一天从右侧落位，往前一天从左侧 */}
+      <SwapIn swapKey={day} direction={dayDirection} style={{ rowGap: 24 }}>
+        {hasEntries || showSkeleton ? (
+          <View className="px-5">
+            <SectionHeader
+              label={headLabel}
+              trailing={showSkeleton ? null : <Caption tabular>{headSummary}</Caption>}
+            />
+            <Card padded={false}>
+              <View style={{ paddingTop: 4, paddingBottom: 5 }}>
+                {showSkeleton ? (
+                  <TimelineSkeleton />
+                ) : (
+                  nodes.map((node, i) => {
+                    const line = railLine(i, nodes.length);
+                    if (node.kind === 'now') return <NowRow key="now" line={line} />;
+                    return (
+                      <TimelineRow
+                        key={node.item.id}
+                        item={node.item}
+                        line={line}
+                        separator={node.separator}
+                        trailing={
+                          node.item.planned ? (
+                            isFuture ? (
+                              <Badge tone="lake">计划</Badge>
+                            ) : (
+                              <Pressable
+                                accessibilityRole="button"
+                                accessibilityLabel={`确认吃了 ${node.item.title}`}
+                                onPress={() => void sheet.confirmPlan(node.item)}
+                                className="bg-lake-tint rounded-control h-8 flex-row items-center gap-1 px-2.5 active:opacity-70">
+                                <Icon name="check" size="sm" tone="lake" strokeWidth={2.6} />
+                                <Body tone="lake" size="text-[13px]" weight="font-semibold">
+                                  吃了
+                                </Body>
+                              </Pressable>
+                            )
                           ) : (
-                            <Pressable
-                              accessibilityRole="button"
-                              accessibilityLabel={`确认吃了 ${node.item.title}`}
-                              onPress={() => void sheet.confirmPlan(node.item)}
-                              className="bg-lake-tint rounded-control h-8 flex-row items-center gap-1 px-2.5 active:opacity-70">
-                              <Icon name="check" size="sm" tone="lake" strokeWidth={2.6} />
-                              <Body tone="lake" size="text-[13px]" weight="font-semibold">
-                                吃了
-                              </Body>
-                            </Pressable>
+                            <TrailingChevron />
                           )
-                        ) : (
-                          <TrailingChevron />
-                        )
-                      }
-                      onPress={() => sheet.openCheckin({ day, existing: node.item })}
-                    />
-                  );
-                })
-              )}
-            </View>
-          </Card>
-          <Caption className="mt-2 px-1">
-            {isFuture
-              ? '到那天在这里确认，才计入打卡与制作次数'
-              : '按用餐时间排序 · 轻点记录可修改或删除'}
-          </Caption>
-        </View>
-      ) : (
-        /* 空状态：不摆卡片、也不进时间轴，把「现在」的位置让给一句邀请 */
-        <DayEmptyState
-          isToday={isToday}
-          isFuture={isFuture}
-          onPress={() => sheet.openCheckin({ day })}
-        />
-      )}
+                        }
+                        onPress={() => sheet.openCheckin({ day, existing: node.item })}
+                      />
+                    );
+                  })
+                )}
+              </View>
+            </Card>
+            <Caption className="mt-2 px-1">
+              {isFuture
+                ? '到那天在这里确认，才计入打卡与制作次数'
+                : '按用餐时间排序 · 轻点记录可修改或删除'}
+            </Caption>
+          </View>
+        ) : (
+          /* 空状态：不摆卡片、也不进时间轴，把「现在」的位置让给一句邀请 */
+          <DayEmptyState
+            isToday={isToday}
+            isFuture={isFuture}
+            onPress={() => sheet.openCheckin({ day })}
+          />
+        )}
 
-      {/* 看今天时预告未来一周的安排，点进去就是那天 */}
-      {isToday && upcomingPlans.length > 0 ? (
-        <View className="px-5">
-          <Section title="接下来的安排" footer="未来七天 · 点击查看那天">
-            {upcomingPlans.map((item) => (
-              <ListRow
-                key={item.id}
-                leading={
-                  <View className="h-[22px] w-[22px] items-center justify-center">
-                    <Icon name="calendar-clock" size="md" tone="lake" />
-                  </View>
-                }
-                title={item.title}
-                subtitle={`${monthDayLabel(item.day)} · 星期${WEEKDAYS[parseDay(item.day).getDay()]}`}
-                accessory="chevron"
-                onPress={() => select(item.day)}
-              />
-            ))}
-          </Section>
-        </View>
-      ) : null}
-
-      {/* 常做菜谱：次数与「上次做于」已经是真数据，由打卡派生 */}
-      {recipes.length > 0 ? (
-        <View className="px-5">
-          <Section title="常做菜谱" footer="按制作次数排序，点击查看详情">
-            {[...recipes]
-              .sort((a, b) => b.cooked - a.cooked)
-              .slice(0, 3)
-              .map((recipe) => (
+        {/* 看今天时预告未来一周的安排，点进去就是那天 */}
+        {isToday && upcomingPlans.length > 0 ? (
+          <View className="px-5">
+            <Section title="接下来的安排" footer="未来七天 · 点击查看那天">
+              {upcomingPlans.map((item) => (
                 <ListRow
-                  key={recipe.slug}
+                  key={item.id}
                   leading={
-                    <View className="bg-tint rounded-thumb h-10 w-10 items-center justify-center">
-                      <Icon name="clock" size="md" tone="accent" />
+                    <View className="h-[22px] w-[22px] items-center justify-center">
+                      <Icon name="calendar-clock" size="md" tone="lake" />
                     </View>
                   }
-                  title={recipe.title}
-                  subtitle={`${recipe.category} · ${relativeDayLabel(recipe.lastCookedOn)} · 累计 ${recipe.cooked} 次`}
+                  title={item.title}
+                  subtitle={`${monthDayLabel(item.day)} · 星期${WEEKDAYS[parseDay(item.day).getDay()]}`}
                   accessory="chevron"
-                  onPress={() => router.push(`/recipes/${recipe.slug}`)}
+                  onPress={() => select(item.day)}
                 />
               ))}
-          </Section>
-        </View>
-      ) : null}
+            </Section>
+          </View>
+        ) : null}
+
+        {/* 常做菜谱：次数与「上次做于」已经是真数据，由打卡派生 */}
+        {recipes.length > 0 ? (
+          <View className="px-5">
+            <Section title="常做菜谱" footer="按制作次数排序，点击查看详情">
+              {[...recipes]
+                .sort((a, b) => b.cooked - a.cooked)
+                .slice(0, 3)
+                .map((recipe) => (
+                  <ListRow
+                    key={recipe.slug}
+                    leading={
+                      <View className="bg-tint rounded-thumb h-10 w-10 items-center justify-center">
+                        <Icon name="clock" size="md" tone="accent" />
+                      </View>
+                    }
+                    title={recipe.title}
+                    subtitle={`${recipe.category} · ${relativeDayLabel(recipe.lastCookedOn)} · 累计 ${recipe.cooked} 次`}
+                    accessory="chevron"
+                    onPress={() => router.push(`/recipes/${recipe.slug}`)}
+                  />
+                ))}
+            </Section>
+          </View>
+        ) : null}
+      </SwapIn>
 
       <View className="flex-row gap-3 px-5">
         <View className="flex-1">
@@ -470,7 +481,12 @@ function DayEmptyState({
 }) {
   return (
     <View className="px-5">
-      <View className="items-center justify-center" style={{ minHeight: 360, paddingBottom: 40 }}>
+      {/*
+       * 空状态不是页面主内容，不该按整屏高度撑开：
+       * minHeight 取一个紧凑但可呼应的值，把内容留在周历下方不远处，
+       * 一眼就能从「这周什么也没发生」直接读到邀请。
+       */}
+      <View className="items-center justify-center pt-6 pb-10" style={{ minHeight: 232 }}>
         <View className="bg-fill-deep h-14 w-14 items-center justify-center rounded-full">
           <Icon name={isFuture ? 'calendar-plus' : 'notebook-pen'} size="xl" tone="soft" />
         </View>
@@ -608,12 +624,12 @@ function TimelineRow({
   line: ReturnType<typeof railLine>;
   onPress: () => void;
 }) {
-  const { animatedStyle, onPressIn, onPressOut } = usePressFeedback(0.995);
+  const { animatedStyle, onPressIn, onPressOut } = usePressFeedback(mt.pressScale.block);
 
   return (
     <Animated.View style={animatedStyle} layout={layoutTransition}>
       <Pressable
-        className="active:bg-tint/70 w-full"
+        className="active:bg-fill/60 w-full"
         accessibilityRole="button"
         accessibilityLabel={item.planned ? `修改计划 ${item.title}` : `修改 ${item.title}`}
         onPress={onPress}

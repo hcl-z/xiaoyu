@@ -6,10 +6,11 @@
  * Web 的 u-glass（backdrop-filter）在原生没有等价能力，改用半透明实色面。
  */
 import { useEffect, type ReactNode } from 'react';
-import { Pressable } from 'react-native';
+import { Pressable, type Insets } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withRepeat,
   withTiming,
@@ -17,7 +18,7 @@ import Animated, {
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { usePressFeedback } from '@/motion';
-import { color, elevationStyle, motion as mt } from '@/theme';
+import { color, elevationStyle, layout, motion as mt } from '@/theme';
 
 import { Icon, type IconName } from './icon';
 import { Body } from './text';
@@ -26,23 +27,48 @@ function cx(...parts: (string | false | undefined | null)[]) {
   return parts.filter(Boolean).join(' ');
 }
 
+/**
+ * 触控区兜底：视觉尺寸小于 44pt 时，用 hitSlop 把可点区域补到 44pt。
+ * iOS 的人机界面指南把 44×44 当作最小可靠目标，小按钮没有补偿时
+ * 在真实手指下很难点中。导出给 controls / inputs 用同一套算法，
+ * 不要在各自文件里写 hitSlop={6} 这类没有出处的数字。
+ */
+export function slopFor(width: number, height: number): Insets | undefined {
+  const x = Math.max(0, Math.ceil((layout.tapMin - width) / 2));
+  const y = Math.max(0, Math.ceil((layout.tapMin - height) / 2));
+  if (x === 0 && y === 0) return undefined;
+  return { top: y, bottom: y, left: x, right: x };
+}
+
 /* ------------------------------------------------------------------ */
 /* Spinner                                                              */
 /* ------------------------------------------------------------------ */
-/** Web 的 SVG 转圈在原生用同一份几何 + Reanimated 旋转 */
+/**
+ * Web 的 SVG 转圈在原生用同一份几何 + Reanimated 旋转。
+ * 连续旋转属于前庭类动效：系统开了「减弱动态效果」时，
+ * 换成不旋转的静止环——加载仍在表达，但不再持续转。
+ */
 export function Spinner({ size = 14, tone = color.card }: { size?: number; tone?: string }) {
+  const reduceMotion = useReducedMotion();
   const rotation = useSharedValue(0);
 
   useEffect(() => {
+    if (reduceMotion) {
+      rotation.set(0);
+      return;
+    }
     rotation.set(
       withRepeat(withTiming(360, { duration: mt.spin * 1000, easing: Easing.linear }), -1, false)
     );
-  }, [rotation]);
+  }, [rotation, reduceMotion]);
 
   const animated = useAnimatedStyle(() => ({ transform: [{ rotate: `${rotation.get()}deg` }] }));
 
   return (
-    <Animated.View style={animated}>
+    <Animated.View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={animated}>
       <Svg width={size} height={size} viewBox="0 0 24 24">
         <Circle
           cx="12"
@@ -84,8 +110,8 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
 const BTN_BOX: Record<ButtonVariant, string> = {
   primary: 'bg-indigo active:bg-indigo-deep',
   secondary: 'border border-hair bg-card active:border-indigo/50',
-  tonal: 'bg-tint active:bg-tint/70',
-  tinted: 'bg-tint active:bg-tint/70',
+  tonal: 'bg-tint active:bg-fill/60',
+  tinted: 'bg-tint active:bg-fill/60',
   ghost: 'border border-hair bg-card active:border-ink/30',
   quiet: 'bg-transparent',
   plain: 'bg-transparent',
@@ -122,10 +148,10 @@ const BTN_SPINNER: Record<ButtonVariant, string> = {
   destructive: color.danger,
 };
 
-const BTN_SIZE: Record<ButtonSize, { box: string; label: string | undefined }> = {
-  sm: { box: 'h-8 gap-1.5 rounded-full px-3.5', label: 'text-[13px]' },
-  md: { box: 'h-[42px] gap-2 rounded-full px-4.5', label: undefined },
-  lg: { box: 'h-[50px] gap-2 rounded-full px-6', label: undefined },
+const BTN_SIZE: Record<ButtonSize, { box: string; label: string | undefined; h: number }> = {
+  sm: { box: 'h-8 gap-1.5 rounded-full px-3.5', label: 'text-[13px]', h: 32 },
+  md: { box: 'h-[42px] gap-2 rounded-full px-4.5', label: undefined, h: 42 },
+  lg: { box: 'h-[50px] gap-2 rounded-full px-6', label: undefined, h: 50 },
 };
 
 /** 按钮内图标的尺寸约定：sm 用 14，其余用 17 */
@@ -163,9 +189,11 @@ export function Button({
   label,
 }: ButtonProps) {
   const inert = disabled || loading;
-  const { animatedStyle, onPressIn, onPressOut } = usePressFeedback(0.98);
+  const { animatedStyle, onPressIn, onPressOut } = usePressFeedback(mt.pressScale.button);
   const sizing = BTN_SIZE[size];
   const leading = variant === 'plain' || variant === 'quiet' ? 'px-1' : undefined;
+  // sm 只有 32pt 高：靠 hitSlop 把可点区域补到 44pt，视觉不变、手感变准
+  const slop = slopFor(0, sizing.h);
 
   return (
     <Animated.View style={[animatedStyle, block ? { alignSelf: 'stretch' } : undefined]}>
@@ -174,6 +202,7 @@ export function Button({
         accessibilityLabel={label}
         accessibilityState={{ disabled: inert, busy: loading }}
         disabled={inert}
+        hitSlop={slop}
         onPress={onPress}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
@@ -222,6 +251,9 @@ const ICON_BTN_TONE: Record<IconButtonVariant, 'ink' | 'soft' | 'muted' | 'accen
 
 const ICON_BTN_SIZE = { sm: 'h-8 w-8', md: 'h-9 w-9', lg: 'h-11 w-11' } as const;
 
+/** 各尺寸的边长（pt）：越小越需要 hitSlop 兜底，而不是反过来 */
+const ICON_BTN_EDGE: Record<keyof typeof ICON_BTN_SIZE, number> = { sm: 32, md: 36, lg: 44 };
+
 export type IconButtonProps = {
   name: IconName;
   /** 无障碍名称，同时作为 tooltip 语义 */
@@ -240,7 +272,8 @@ export function IconButton({
   size = 'md',
   className,
 }: IconButtonProps) {
-  const { animatedStyle, onPressIn, onPressOut } = usePressFeedback(0.95);
+  const { animatedStyle, onPressIn, onPressOut } = usePressFeedback(mt.pressScale.icon);
+  const edge = ICON_BTN_EDGE[size];
 
   return (
     <Animated.View style={animatedStyle}>
@@ -248,7 +281,8 @@ export function IconButton({
         accessibilityRole="button"
         accessibilityLabel={label}
         onPress={onPress}
-        hitSlop={size === 'sm' ? 6 : size === 'md' ? 4 : 0}
+        // 尺寸越小、补偿越多；lg 已经是 44pt，不再外扩
+        hitSlop={slopFor(edge, edge)}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         className={cx(
@@ -281,7 +315,7 @@ export function FabButton({
   children: ReactNode;
   className?: string;
 }) {
-  const { animatedStyle, onPressIn, onPressOut } = usePressFeedback(0.95);
+  const { animatedStyle, onPressIn, onPressOut } = usePressFeedback(mt.pressScale.icon);
 
   return (
     <Animated.View style={[animatedStyle, elevationStyle.fab]}>

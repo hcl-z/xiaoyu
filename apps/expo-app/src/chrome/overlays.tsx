@@ -119,7 +119,7 @@ function AlertButton({
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
-      className="active:bg-tint/60 h-11 flex-1 flex-row items-center justify-center">
+      className="active:bg-fill/50 h-11 flex-1 flex-row items-center justify-center">
       <Body tone={tone} weight={weight}>
         {label}
       </Body>

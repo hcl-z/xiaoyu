@@ -67,9 +67,15 @@ export function ShowcaseStage({
             columnGap: 12,
             paddingHorizontal: 4,
           }}>
-          {label ? <Micro>{label}</Micro> : <View />}
+          {label ? (
+            <View className="min-w-0 shrink">
+              <Micro numberOfLines={1}>{label}</Micro>
+            </View>
+          ) : (
+            <View />
+          )}
           {caption ? (
-            <Caption size="text-[11px]" numberOfLines={1}>
+            <Caption size="text-[11px]" numberOfLines={1} className="min-w-0 shrink text-right">
               {caption}
             </Caption>
           ) : null}

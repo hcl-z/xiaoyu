@@ -7,15 +7,21 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 import Animated, {
+  Extrapolation,
+  interpolate,
   interpolateColor,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
+  withDelay,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
 import { usePressFeedback, useSegmentIndicator, useToggle } from '@/motion';
-import { color, elevationStyle, hairline, radius } from '@/theme';
+import { color, elevationStyle, hairline, motion as mt, radius } from '@/theme';
 
+import { slopFor } from './button';
 import { Icon } from './icon';
 import { Body } from './text';
 
@@ -57,7 +63,7 @@ export function Pill({
   onPress?: () => void;
   className?: string;
 }) {
-  const { animatedStyle, onPressIn, onPressOut } = usePressFeedback(0.98);
+  const { animatedStyle, onPressIn, onPressOut } = usePressFeedback(mt.pressScale.button);
   const classes = cx(
     'shrink-0 flex-row items-center gap-1.5 rounded-full border',
     size === 'sm' ? 'px-2.5 py-1' : 'px-3.5 py-1.5',
@@ -91,7 +97,7 @@ export function Pill({
         accessibilityRole="button"
         accessibilityState={{ selected: active }}
         onPress={onPress}
-        hitSlop={6}
+        hitSlop={slopFor(size === 'sm' ? 20 : 25, size === 'sm' ? 20 : 25)}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         className={classes}>
@@ -132,7 +138,9 @@ export function Segmented<T extends string>({
     options.findIndex((o) => o.value === value)
   );
   const innerWidth = Math.max(0, trackWidth - TRACK_PADDING * 2);
-  const indicatorStyle = useSegmentIndicator(index, options.length, innerWidth);
+  /** 每段宽度：指示器的宽度与位移步长共用同一个值，两者不能各算各的 */
+  const itemWidth = options.length > 0 ? innerWidth / options.length : 0;
+  const indicatorStyle = useSegmentIndicator(index, itemWidth);
 
   return (
     <View
@@ -150,7 +158,7 @@ export function Segmented<T extends string>({
               left: TRACK_PADDING,
               top: TRACK_PADDING,
               bottom: TRACK_PADDING,
-              width: innerWidth / options.length,
+              width: itemWidth,
               borderRadius: radius.sheet,
               backgroundColor: color.card,
             },
@@ -252,7 +260,7 @@ function StepperButton({
   disabled: boolean;
   onPress: () => void;
 }) {
-  const { animatedStyle, onPressIn, onPressOut } = usePressFeedback(0.92);
+  const { animatedStyle, onPressIn, onPressOut } = usePressFeedback(mt.pressScale.chip);
 
   return (
     <Animated.View style={animatedStyle}>
@@ -262,7 +270,7 @@ function StepperButton({
         accessibilityState={{ disabled }}
         disabled={disabled}
         onPress={onPress}
-        hitSlop={6}
+        hitSlop={slopFor(32, 32)}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         className={cx(
@@ -281,14 +289,15 @@ export function Stepper({
   min = 0,
   max = 999,
   suffix = '',
-  label,
+  label = '数值',
 }: {
   value: number;
   onChange: (v: number) => void;
   min?: number;
   max?: number;
   suffix?: string;
-  label: string;
+  /** 仅用于两个小按钮的朗朗文案（减少 / 增加），不再渲染成可见标签 */
+  label?: string;
 }) {
   return (
     <View className="flex-row items-center gap-2">
@@ -326,16 +335,32 @@ export function CheckCircle({
   label?: string;
 }) {
   const progress = useSharedValue(done ? 1 : 0);
+  const tick = useSharedValue(done ? 1 : 0);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     progress.set(withTiming(done ? 1 : 0, { duration: 300 }));
-  }, [done, progress]);
+    // 对钩单独弹一下：勾勾到位的那一下是“备齐了”的满足感，比纯淡入清楚得多
+    tick.set(
+      done
+        ? withDelay(
+            120,
+            reduceMotion
+              ? withTiming(1, { duration: 0 })
+              : withSpring(1, { damping: 15, stiffness: 420 })
+          )
+        : withTiming(0, { duration: 120 })
+    );
+  }, [done, progress, tick, reduceMotion]);
 
   const circleStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(progress.get(), [0, 1], [color.card, color.lake]),
     borderColor: interpolateColor(progress.get(), [0, 1], [color.hair, color.lake]),
   }));
-  const checkStyle = useAnimatedStyle(() => ({ opacity: progress.get() }));
+  const checkStyle = useAnimatedStyle(() => ({
+    opacity: tick.get(),
+    transform: [{ scale: interpolate(tick.get(), [0, 1], [0.5, 1], Extrapolation.CLAMP) }],
+  }));
 
   const dot = (
     <Animated.View
@@ -365,7 +390,7 @@ export function CheckCircle({
       accessibilityState={{ checked: done }}
       accessibilityLabel={label}
       onPress={onPress}
-      hitSlop={10}
+      hitSlop={slopFor(size, size)}
       className="shrink-0">
       {dot}
     </Pressable>

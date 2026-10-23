@@ -12,6 +12,7 @@ import Animated, {
   Easing,
   useAnimatedProps,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withDelay,
   withTiming,
@@ -26,6 +27,13 @@ import { Body } from './text';
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 const easeIos = Easing.bezier(mt.ease[0], mt.ease[1], mt.ease[2], mt.ease[3]);
+
+/**
+ * 图表里的一次性入场时长（毫秒）。
+ * 集中在这里是为了让环、条、柱、热力格的落位节奏一致——
+ * 同一屏上四个图表各用各的时长会看出「它们不在一个系统里」。
+ */
+const CHART_ENTER_MS = 500;
 
 function cx(...parts: (string | false | undefined | null)[]) {
   return parts.filter(Boolean).join(' ');
@@ -138,16 +146,21 @@ export function Bar({
   height?: number;
   className?: string;
 }) {
+  const reduceMotion = useReducedMotion();
   const [width, setWidth] = useState(0);
   const clamped = Math.max(0, Math.min(100, pct));
   const target = (width * clamped) / 100;
   const progress = useSharedValue(0);
 
   useEffect(() => {
+    if (reduceMotion) {
+      progress.set(target);
+      return;
+    }
     progress.set(
       withTiming(target, { duration: (mt.duration.slow + 0.3) * 1000, easing: easeIos })
     );
-  }, [progress, target]);
+  }, [progress, target, reduceMotion]);
 
   const animated = useAnimatedStyle(() => ({ width: progress.get() }));
 
@@ -228,7 +241,7 @@ export function Sparkbars({
           );
         })}
       </View>
-      {labels ? (
+      {labels && labels.length === values.length ? (
         <View className="mt-1 flex-row gap-1">
           {labels.map((l, i) => {
             const last = highlightLast && i === labels.length - 1;
@@ -265,12 +278,17 @@ function Sparkbar({
   opacity: number;
   delay: number;
 }) {
+  const reduceMotion = useReducedMotion();
   const target = Math.max(10, (value / max) * availableHeight);
-  const height = useSharedValue(2);
+  const height = useSharedValue(reduceMotion ? target : 2);
 
   useEffect(() => {
-    height.set(withDelay(delay, withTiming(target, { duration: 500, easing: easeIos })));
-  }, [height, target, delay]);
+    if (reduceMotion) {
+      height.set(target);
+      return;
+    }
+    height.set(withDelay(delay, withTiming(target, { duration: CHART_ENTER_MS, easing: easeIos })));
+  }, [height, target, delay, reduceMotion]);
 
   const animated = useAnimatedStyle(() => ({ height: height.get() }));
 
@@ -360,17 +378,22 @@ function HeatCell({
   current: boolean;
   onSelect?: (day: string) => void;
 }) {
-  const progress = useSharedValue(0);
+  const reduceMotion = useReducedMotion();
+  const progress = useSharedValue(reduceMotion ? 1 : 0);
   const interactive = Boolean(day && onSelect);
 
   useEffect(() => {
+    if (reduceMotion) {
+      progress.set(1);
+      return;
+    }
     progress.set(
       withDelay(
         stagger(index, mt.stagger.heatmap),
         withTiming(1, { duration: 250, easing: Easing.out(Easing.ease) })
       )
     );
-  }, [progress, index]);
+  }, [progress, index, reduceMotion]);
 
   const animated = useAnimatedStyle(() => ({
     opacity: progress.get(),

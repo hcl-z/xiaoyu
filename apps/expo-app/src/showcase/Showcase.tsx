@@ -14,6 +14,7 @@ import { ColorsSection } from './ColorsSection';
 import { ControlsSection } from './ControlsSection';
 import { DataSection } from './DataSection';
 import { IconsSection } from './IconsSection';
+import { InputCandidatesSection } from './InputCandidatesSection';
 import { InputsSection } from './InputsSection';
 import { MotionSection } from './MotionSection';
 import { SpacingSection } from './SpacingSection';
@@ -63,6 +64,10 @@ export function Showcase() {
 
       <ShowcaseSection index="03" title="输入">
         <InputsSection />
+      </ShowcaseSection>
+
+      <ShowcaseSection index="03b" title="输入形态候选 · 待选">
+        <InputCandidatesSection />
       </ShowcaseSection>
 
       <ShowcaseSection index="04" title="容器与列表">

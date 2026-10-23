@@ -70,13 +70,18 @@ export async function pickPhoto(source: PhotoSource): Promise<PreparedPhoto | nu
   return compress(asset.uri, asset.width ?? 0, asset.height ?? 0);
 }
 
-/** 上传一张已压缩的照片，返回 photoId */
-export async function uploadPhoto(photo: PreparedPhoto): Promise<number> {
+/**
+ * 上传一张已压缩的照片，返回可直接存进业务字段的地址。
+ *
+ * 打卡与菜谱封面共用这一条通道：服务端同样是 photos 表 + 按会话校验。
+ * 返回的是站内相对路径（调用方存字段用），绝对地址由 resolveImageUrl 补。
+ */
+export async function uploadPhoto(photo: PreparedPhoto, name = 'photo.jpg'): Promise<number> {
   const form = new FormData();
   // React Native 的 FormData 接受 { uri, name, type }；类型定义只认 Blob
   form.append('file', {
     uri: photo.uri,
-    name: 'checkin.jpg',
+    name,
     type: 'image/jpeg',
   } as unknown as Blob);
   form.append('width', String(photo.width));
@@ -87,4 +92,12 @@ export async function uploadPhoto(photo: PreparedPhoto): Promise<number> {
   const id = res.data.photo?.id;
   if (!id) throw new Error('上传失败，请重试');
   return id;
+}
+
+/**
+ * 站内照片的标准地址。
+ * 存进 recipe.image / 钉在界面上都用它，避免各处手拼字符串。
+ */
+export function photoPath(photoId: number): string {
+  return `/api/photos/${photoId}`;
 }

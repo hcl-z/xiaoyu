@@ -1,0 +1,22 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - generic [ref=e7]:
+            - heading "菜谱" [level=1] [ref=e8]
+            - generic [ref=e9]: 0 道 · 按制作次数排序
+          - button "新建菜谱" [ref=e11]
+        - generic [ref=e13]:
+          - textbox "搜菜名、标签或食材，如「菠菜」" [ref=e18]
+          - generic [ref=e19]:
+            - button "全部" [ref=e20]
+            - button "收藏" [ref=e21]
+      - button "记一笔" [ref=e42]
+      - generic [ref=e47]:
+        - button "今日" [ref=e48]
+        - button "菜谱" [ref=e53]
+        - button "我的" [ref=e57]
+    - link "← 展示台 / 设计系统" [ref=e62] [cursor=pointer]:
+      - /url: /
+  - alert [ref=e63]

@@ -1,0 +1,5 @@
+- generic [active] [ref=f1e1]:
+  - link "← 展示台 / 设计系统" [ref=f1e10] [cursor=pointer]:
+    - /url: /
+  - button "Open Next.js Dev Tools" [ref=f1e16] [cursor=pointer]
+  - alert [ref=f1e20]

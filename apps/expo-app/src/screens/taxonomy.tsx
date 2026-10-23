@@ -15,6 +15,7 @@ import { ListRow, Section, Skeleton } from '@/components/surfaces';
 import { Body, Caption } from '@/components/text';
 import { useTaxonomies } from '@/data/store';
 import type { TaxonomyItem, TaxonomyKind } from '@/data/types';
+import { layout } from '@/theme';
 
 type Copy = {
   title: string;
@@ -167,8 +168,16 @@ export function TaxonomyScreen({ kind }: { kind: TaxonomyKind }) {
                   ))
                 )}
 
-                {/* 就地新增行：无需弹层，输入后即创建 */}
-                <View className="min-h-11 flex-row items-center gap-3 px-4 py-2.5">
+                {/*
+                 * 就地新增行：无需弹层，输入后即创建。
+                 * 用固定行高（layout.rowMin = 44）而不是 min-h + 上下 padding：
+                 * 固定高度才能让 items-center 把「图标 + 输入框 + 动作」
+                 * 三者对齐到同一条中心线上；靠 padding 撑高时，
+                 * 输入框在 iOS 上的固有高度会把整组内容往下顶。
+                 */}
+                <View
+                  className="flex-row items-center gap-3 px-4"
+                  style={{ height: layout.rowMin }}>
                   <View className="bg-tint h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full">
                     <Icon name="plus" size="sm" tone="accent" strokeWidth={2.6} />
                   </View>
@@ -183,6 +192,12 @@ export function TaxonomyScreen({ kind }: { kind: TaxonomyKind }) {
                     label={`新增${copy.label}`}
                     focusSignal={focusSignal}
                     onSubmit={() => void commitAdd()}
+                    /*
+                     * bare：这一行已经有左侧蓝色 + 图标、又已经在 Section 白卡里，
+                     * 再套一层输入行的白底描边框就是框中框。
+                     * label 不渲染（行本身没有左标签位），但仍传给无障碍朗读。
+                     */
+                    inline
                     className="flex-1"
                   />
                   {draft.trim() ? (
@@ -228,7 +243,8 @@ export function TaxonomyScreen({ kind }: { kind: TaxonomyKind }) {
         }>
         <View style={{ rowGap: 20, paddingBottom: 8 }}>
           <Section tone="deep">
-            <View className="flex-row items-center gap-3 px-4 py-2.5">
+            {/* 与新增行同一条规则：固定行高，让标签与输入框对齐到同一条中心线 */}
+            <View className="flex-row items-center gap-3 px-4" style={{ height: layout.rowMin }}>
               <Body tone="muted" className="w-14 shrink-0">
                 名称
               </Body>
@@ -241,6 +257,8 @@ export function TaxonomyScreen({ kind }: { kind: TaxonomyKind }) {
                 align="left"
                 placeholder={`${copy.label}名称`}
                 label={`${copy.label}名称`}
+                /* 左侧已经有「名称」标签，行也已经在 Section 里：不再套框 */
+                inline
                 className="flex-1"
               />
             </View>

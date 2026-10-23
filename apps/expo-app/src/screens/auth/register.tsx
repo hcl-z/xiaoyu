@@ -8,9 +8,8 @@ import { useRouter } from 'expo-router';
 
 import { Button } from '@/components/button';
 import { CheckCircle } from '@/components/controls';
-import { Section } from '@/components/surfaces';
 import { Caption } from '@/components/text';
-import { FieldRow, TextField } from '@/components/inputs';
+import { FormGroup, TextField } from '@/components/inputs';
 import { PASSWORD_RULES, isValidEmail } from '@/domain/account';
 import { useSession } from '@/session';
 
@@ -62,54 +61,42 @@ export function RegisterScreen() {
           </View>
         </>
       }>
-      <Section>
-        <FieldRow label="昵称" align="left">
-          <TextField
-            value={name}
-            onChange={(v) => {
-              setName(v);
-              if (error) setError('');
-            }}
-            align="left"
-            placeholder="怎么称呼你"
-            label="昵称"
-            editable={!busy}
-            className="flex-1"
-          />
-        </FieldRow>
-        <FieldRow label="邮箱" align="left">
-          <TextField
-            value={email}
-            onChange={(v) => {
-              setEmail(v);
-              if (error) setError('');
-            }}
-            align="left"
-            placeholder="name@example.com"
-            inputMode="email"
-            label="邮箱"
-            editable={!busy}
-            onBlur={() => setEmailTouched(true)}
-            error={emailTouched && Boolean(email.trim()) && !emailValid}
-            className="flex-1"
-          />
-        </FieldRow>
-        <FieldRow label="密码" align="left">
-          <TextField
-            value={password}
-            onChange={(v) => {
-              setPassword(v);
-              if (error) setError('');
-            }}
-            align="left"
-            placeholder="设置密码"
-            label="密码"
-            secure
-            editable={!busy}
-            className="flex-1"
-          />
-        </FieldRow>
-      </Section>
+      <FormGroup>
+        <TextField
+          value={name}
+          onChange={(v) => {
+            setName(v);
+            if (error) setError('');
+          }}
+          placeholder="怎么称呼你"
+          label="昵称"
+          editable={!busy}
+        />
+        <TextField
+          value={email}
+          onChange={(v) => {
+            setEmail(v);
+            if (error) setError('');
+          }}
+          placeholder="name@example.com"
+          inputMode="email"
+          label="邮箱"
+          editable={!busy}
+          onBlur={() => setEmailTouched(true)}
+          error={emailTouched && Boolean(email.trim()) && !emailValid}
+        />
+        <TextField
+          value={password}
+          onChange={(v) => {
+            setPassword(v);
+            if (error) setError('');
+          }}
+          placeholder="设置密码"
+          label="密码"
+          secure
+          editable={!busy}
+        />
+      </FormGroup>
 
       <View className="mt-3 flex-row flex-wrap gap-x-5 gap-y-2 px-1">
         {PASSWORD_RULES.map((rule) => {

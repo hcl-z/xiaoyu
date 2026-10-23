@@ -1,0 +1,927 @@
+- generic [active] [ref=f3e1]:
+  - banner [ref=f3e2]:
+    - generic [ref=f3e3]:
+      - link "daily+" [ref=f3e4] [cursor=pointer]:
+        - /url: /
+      - link "打开应用" [ref=f3e6] [cursor=pointer]:
+        - /url: /today
+  - generic [ref=f3e7]:
+    - banner [ref=f3e8]:
+      - text: DAILY + DESIGN SYSTEM · v2.0
+      - heading "柔和的卡片语言，三种导航范式" [level=1] [ref=f3e9]
+      - paragraph [ref=f3e10]: 三层结构：Tokens（颜色 / 字阶 / 圆角 / 间距 / 阴影 / 动效，唯一真源）→ Components（页面只能组合这里导出的积木）→ Pages（只做组合与数据编排）。 全部页面遵循同一条版式规则：灰底 + 悬浮白卡 + 发丝描边与极轻落影，列表用 18 圆角分组、行内分隔线在左侧缩进； 导航只有 Large Title（Tab 根页）、紧凑导航条（Push 页）、弹层（Modal）三种。
+      - generic [ref=f3e11]:
+        - generic [ref=f3e12]: 灰底 + 悬浮白卡
+        - generic [ref=f3e13]: 3 种导航范式
+        - generic [ref=f3e14]: 17 个颜色
+        - generic [ref=f3e15]: 7 级字阶
+        - generic [ref=f3e16]: 6 段圆角
+        - generic [ref=f3e17]: 8 种动效
+    - generic [ref=f3e18]:
+      - navigation [ref=f3e19]:
+        - generic [ref=f3e20]:
+          - link "01 设计原则" [ref=f3e21] [cursor=pointer]:
+            - /url: "#principles"
+            - generic [ref=f3e22]: "01"
+            - text: 设计原则
+          - link "02 色彩" [ref=f3e23] [cursor=pointer]:
+            - /url: "#color"
+            - generic [ref=f3e24]: "02"
+            - text: 色彩
+          - link "03 字体与字阶" [ref=f3e25] [cursor=pointer]:
+            - /url: "#type"
+            - generic [ref=f3e26]: "03"
+            - text: 字体与字阶
+          - link "04 圆角 · 间距 · 阴影" [ref=f3e27] [cursor=pointer]:
+            - /url: "#geometry"
+            - generic [ref=f3e28]: "04"
+            - text: 圆角 · 间距 · 阴影
+          - link "05 动效" [ref=f3e29] [cursor=pointer]:
+            - /url: "#motion"
+            - generic [ref=f3e30]: "05"
+            - text: 动效
+          - link "06 图标" [ref=f3e31] [cursor=pointer]:
+            - /url: "#icons"
+            - generic [ref=f3e32]: "06"
+            - text: 图标
+          - link "07 组件" [ref=f3e33] [cursor=pointer]:
+            - /url: "#components"
+            - generic [ref=f3e34]: "07"
+            - text: 组件
+          - link "08 页面组合规范" [ref=f3e35] [cursor=pointer]:
+            - /url: "#composition"
+            - generic [ref=f3e36]: "08"
+            - text: 页面组合规范
+      - generic [ref=f3e37]:
+        - generic [ref=f3e38]:
+          - generic [ref=f3e39]:
+            - generic [ref=f3e40]: "01"
+            - heading "设计原则" [level=3] [ref=f3e41]
+            - generic [ref=f3e42]: PRINCIPLES · 四条不可协商
+          - generic [ref=f3e43]:
+            - generic [ref=f3e45]:
+              - text: "01"
+              - heading "蓝色即可点" [level=3] [ref=f3e46]
+              - paragraph [ref=f3e47]: 遵循 iOS 语义：系统蓝只出现在可交互元素上——按钮、链接、激活态。绿色只表示完成，红色只表示破坏。
+            - generic [ref=f3e49]:
+              - text: "02"
+              - heading "灰底白卡" [level=3] [ref=f3e50]
+              - paragraph [ref=f3e51]: 所有内容都住在悬浮白卡里：圆角 22、1px 发丝描边、一层极轻落影；层次靠底色差与留白，而不是重阴影。
+            - generic [ref=f3e53]:
+              - text: "03"
+              - heading "系统字体 + 表格数字" [level=3] [ref=f3e54]
+              - paragraph [ref=f3e55]: Apple 设备用 SF Pro，其他平台回退 Inter，汉字交给 PingFang / Noto Sans SC；所有数字用表格数字竖向对齐。
+            - generic [ref=f3e57]:
+              - text: "04"
+              - heading "只做两件事的动效" [level=3] [ref=f3e58]
+              - paragraph [ref=f3e59]: 「落位」（进入 / 揭示）与「弹簧」（拖拽 / 切换）。其余一律 200ms 内的淡入，并遵守减弱动效设置。
+        - generic [ref=f3e60]:
+          - generic [ref=f3e61]:
+            - generic [ref=f3e62]: "02"
+            - heading "色彩" [level=3] [ref=f3e63]
+            - generic [ref=f3e64]: COLOR · iOS 系统色板
+          - generic [ref=f3e65]:
+            - generic [ref=f3e66]:
+              - generic [ref=f3e67]:
+                - generic [ref=f3e68]: 表面
+                - generic [ref=f3e69]: 分组底 + 悬浮白卡，卡片带 1px 发丝描边与极轻落影
+              - generic [ref=f3e70]:
+                - generic [ref=f3e71]:
+                  - generic [ref=f3e72]:
+                    - generic [ref=f3e73]: paper
+                    - generic [ref=f3e74]: "#F2F2F7"
+                  - generic [ref=f3e75]:
+                    - text: 分组底
+                    - generic [ref=f3e76]: 全局画布
+                    - code [ref=f3e77]: "--color-paper"
+                - generic [ref=f3e78]:
+                  - generic [ref=f3e79]:
+                    - generic [ref=f3e80]: paper-deep
+                    - generic [ref=f3e81]: "#E8E8ED"
+                  - generic [ref=f3e82]:
+                    - text: 沉底
+                    - generic [ref=f3e83]: 分区底 / 内嵌底
+                    - code [ref=f3e84]: "--color-paper-deep"
+                - generic [ref=f3e85]:
+                  - generic [ref=f3e86]:
+                    - generic [ref=f3e87]: card
+                    - generic [ref=f3e88]: "#FFFFFF"
+                  - generic [ref=f3e89]:
+                    - text: 卡面
+                    - generic [ref=f3e90]: 悬浮卡片 · 弹层
+                    - code [ref=f3e91]: "--color-card"
+                - generic [ref=f3e92]:
+                  - generic [ref=f3e93]:
+                    - generic [ref=f3e94]: fill
+                    - generic [ref=f3e95]: "#EBEBF0"
+                  - generic [ref=f3e96]:
+                    - text: 系统填充
+                    - generic [ref=f3e97]: 搜索框 · 未选中控件
+                    - code [ref=f3e98]: "--color-fill"
+                - generic [ref=f3e99]:
+                  - generic [ref=f3e100]:
+                    - generic [ref=f3e101]: fill-deep
+                    - generic [ref=f3e102]: "#DEDEE4"
+                  - generic [ref=f3e103]:
+                    - text: 深填充
+                    - generic [ref=f3e104]: 分段控件轨道
+                    - code [ref=f3e105]: "--color-fill-deep"
+                - generic [ref=f3e106]:
+                  - generic [ref=f3e107]:
+                    - generic [ref=f3e108]: hairline
+                    - generic [ref=f3e109]: "#E5E5EA"
+                  - generic [ref=f3e110]:
+                    - text: 发丝线
+                    - generic [ref=f3e111]: 卡片描边 · 分隔线 · 轨道
+                    - code [ref=f3e112]: "--color-hair"
+            - generic [ref=f3e113]:
+              - generic [ref=f3e114]:
+                - generic [ref=f3e115]: 文字
+                - generic [ref=f3e116]: 三级 label，全部偏冷中性，无纯黑纯灰
+              - generic [ref=f3e117]:
+                - generic [ref=f3e118]:
+                  - generic [ref=f3e119]:
+                    - generic [ref=f3e120]: ink
+                    - generic [ref=f3e121]: "#1C1C1E"
+                  - generic [ref=f3e122]:
+                    - text: 标签黑
+                    - generic [ref=f3e123]: 标题与正文
+                    - code [ref=f3e124]: "--color-ink"
+                - generic [ref=f3e125]:
+                  - generic [ref=f3e126]:
+                    - generic [ref=f3e127]: ink-soft
+                    - generic [ref=f3e128]: "#3A3A3C"
+                  - generic [ref=f3e129]:
+                    - text: 次级黑
+                    - generic [ref=f3e130]: 段落 · 长文
+                    - code [ref=f3e131]: "--color-ink-soft"
+                - generic [ref=f3e132]:
+                  - generic [ref=f3e133]:
+                    - generic [ref=f3e134]: muted
+                    - generic [ref=f3e135]: "#636366"
+                  - generic [ref=f3e136]:
+                    - text: 三级灰
+                    - generic [ref=f3e137]: 说明 · 元信息（白底 5.7:1）
+                    - code [ref=f3e138]: "--color-muted"
+            - generic [ref=f3e139]:
+              - generic [ref=f3e140]:
+                - generic [ref=f3e141]: 强调
+                - generic [ref=f3e142]: 一个主色一个辅助色；红只用于破坏，橙只进图表
+              - generic [ref=f3e143]:
+                - generic [ref=f3e144]:
+                  - generic [ref=f3e145]:
+                    - generic [ref=f3e146]: indigo
+                    - generic [ref=f3e147]: "#007AFF"
+                  - generic [ref=f3e148]:
+                    - text: 系统蓝
+                    - generic [ref=f3e149]: 进度 · 主按钮 · 激活 · 链接
+                    - code [ref=f3e150]: "--color-indigo"
+                - generic [ref=f3e151]:
+                  - generic [ref=f3e152]:
+                    - generic [ref=f3e153]: indigo-deep
+                    - generic [ref=f3e154]: "#0062CC"
+                  - generic [ref=f3e155]:
+                    - text: 系统蓝·深
+                    - generic [ref=f3e156]: 按压态
+                    - code [ref=f3e157]: "--color-indigo-deep"
+                - generic [ref=f3e158]:
+                  - generic [ref=f3e159]:
+                    - generic [ref=f3e160]: tint
+                    - generic [ref=f3e161]: "#EAF2FF"
+                  - generic [ref=f3e162]:
+                    - text: 蓝浅底
+                    - generic [ref=f3e163]: 选中底色
+                    - code [ref=f3e164]: "--color-tint"
+                - generic [ref=f3e165]:
+                  - generic [ref=f3e166]:
+                    - generic [ref=f3e167]: lake
+                    - generic [ref=f3e168]: "#34C759"
+                  - generic [ref=f3e169]:
+                    - text: 系统绿
+                    - generic [ref=f3e170]: 完成 · 成功
+                    - code [ref=f3e171]: "--color-lake"
+                - generic [ref=f3e172]:
+                  - generic [ref=f3e173]:
+                    - generic [ref=f3e174]: lake-deep
+                    - generic [ref=f3e175]: "#1E8A3E"
+                  - generic [ref=f3e176]:
+                    - text: 系统绿·深
+                    - generic [ref=f3e177]: 浅底上的绿色文字
+                    - code [ref=f3e178]: "--color-lake-deep"
+                - generic [ref=f3e179]:
+                  - generic [ref=f3e180]:
+                    - generic [ref=f3e181]: lake-tint
+                    - generic [ref=f3e182]: "#E9F9EE"
+                  - generic [ref=f3e183]:
+                    - text: 绿浅底
+                    - generic [ref=f3e184]: 成功底色
+                    - code [ref=f3e185]: "--color-lake-tint"
+                - generic [ref=f3e186]:
+                  - generic [ref=f3e187]:
+                    - generic [ref=f3e188]: danger
+                    - generic [ref=f3e189]: "#FF3B30"
+                  - generic [ref=f3e190]:
+                    - text: 系统红
+                    - generic [ref=f3e191]: 仅破坏性操作
+                    - code [ref=f3e192]: "--color-danger"
+                - generic [ref=f3e193]:
+                  - generic [ref=f3e194]:
+                    - generic [ref=f3e195]: gold
+                    - generic [ref=f3e196]: "#FF9500"
+                  - generic [ref=f3e197]:
+                    - text: 系统橙
+                    - generic [ref=f3e198]: 数据第三序列
+                    - code [ref=f3e199]: "--color-gold"
+          - generic [ref=f3e201]:
+            - text: 用色纪律
+            - paragraph [ref=f3e202]: "蓝色 #007AFF 只出现在可交互元素上（按钮、链接、选中、进度）， 信息本身永远是标签黑；绿色 #34C759 只做填充（开关、完成对勾）， 浅底上的绿色文字换用深绿 #1E8A3E（4.5:1）； 红色 #FF3B30 仅用于破坏性操作；橙色只允许出现在图表里，绝不进入界面骨架。"
+        - generic [ref=f3e203]:
+          - generic [ref=f3e204]:
+            - generic [ref=f3e205]: "03"
+            - heading "字体与字阶" [level=3] [ref=f3e206]
+            - generic [ref=f3e207]: TYPE · SF 文本样式
+          - generic [ref=f3e208]:
+            - generic [ref=f3e210]:
+              - text: 字标
+              - generic [ref=f3e211]: daily+
+              - text: LARGE TITLE · 34 / 41 BOLD
+              - heading "今天" [level=1] [ref=f3e214]
+              - heading "番茄牛腩饭" [level=2] [ref=f3e215]
+              - heading "今日记录" [level=3] [ref=f3e216]
+              - paragraph [ref=f3e217]: 系统字体栈：Apple 设备使用 SF Pro，其他平台回退 Inter，汉字交给 PingFang SC / Noto Sans SC。 层级完全由字号与字重承担，不使用衬线或斜体制造差异。
+            - generic [ref=f3e219]:
+              - generic [ref=f3e220]:
+                - generic [ref=f3e221]:
+                  - generic [ref=f3e222]: "21"
+                  - generic [ref=f3e223]:
+                    - text: 数值 XL · 连续天数 ·
+                    - code [ref=f3e224]: text-metric
+                - generic [ref=f3e225]: 38/40-0.02em
+              - generic [ref=f3e226]:
+                - generic [ref=f3e227]:
+                  - generic [ref=f3e228]: 今天
+                  - generic [ref=f3e229]:
+                    - text: 大标题 · Large Title ·
+                    - code [ref=f3e230]: text-display
+                - generic [ref=f3e231]: 30/36-0.02em
+              - generic [ref=f3e232]:
+                - generic [ref=f3e233]:
+                  - generic [ref=f3e234]: 番茄牛腩饭
+                  - generic [ref=f3e235]:
+                    - text: 页面标题 / 菜名 ·
+                    - code [ref=f3e236]: text-title
+                - generic [ref=f3e237]: 25/32-0.01em
+              - generic [ref=f3e238]:
+                - generic [ref=f3e239]:
+                  - generic [ref=f3e240]: 今日三餐
+                  - generic [ref=f3e241]:
+                    - text: 区块标题 · 弹层标题 ·
+                    - code [ref=f3e242]: text-subhead
+                - generic [ref=f3e243]: 18/250
+              - generic [ref=f3e244]:
+                - generic [ref=f3e245]:
+                  - generic [ref=f3e246]: 点一下，把这一餐收进来
+                  - generic [ref=f3e247]:
+                    - text: 正文 · 列表主文案 ·
+                    - code [ref=f3e248]: text-body
+                - generic [ref=f3e249]: 15/220
+              - generic [ref=f3e250]:
+                - generic [ref=f3e251]:
+                  - generic [ref=f3e252]: 12:40 · 1 份 · 午餐
+                  - generic [ref=f3e253]:
+                    - text: 说明 · 元信息 ·
+                    - code [ref=f3e254]: text-caption
+                - generic [ref=f3e255]: 13/190
+              - generic [ref=f3e256]:
+                - generic [ref=f3e257]:
+                  - generic [ref=f3e258]: 今日三餐
+                  - generic [ref=f3e259]:
+                    - text: 加宽字距小标签 ·
+                    - code [ref=f3e260]: text-micro
+                - generic [ref=f3e261]: 11/140.22em
+        - generic [ref=f3e262]:
+          - generic [ref=f3e263]:
+            - generic [ref=f3e264]: "04"
+            - heading "圆角 · 间距 · 阴影" [level=3] [ref=f3e265]
+            - generic [ref=f3e266]: GEOMETRY · 六段圆角，卡片轻落影
+          - generic [ref=f3e267]:
+            - generic [ref=f3e268]:
+              - generic [ref=f3e269]: 圆角
+              - generic [ref=f3e272]:
+                - generic [ref=f3e273]:
+                  - generic [ref=f3e275]: "8"
+                  - code [ref=f3e276]: rounded-xs
+                  - generic [ref=f3e277]: 内点 · 小色块
+                - generic [ref=f3e278]:
+                  - generic [ref=f3e280]: "12"
+                  - code [ref=f3e281]: rounded-control
+                  - generic [ref=f3e282]: 输入域 · 小按钮
+                - generic [ref=f3e283]:
+                  - generic [ref=f3e285]: "14"
+                  - code [ref=f3e286]: rounded-thumb
+                  - generic [ref=f3e287]: 缩略图
+                - generic [ref=f3e288]:
+                  - generic [ref=f3e290]: "18"
+                  - code [ref=f3e291]: rounded-group
+                  - generic [ref=f3e292]: 分组列表 · 内嵌卡
+                - generic [ref=f3e293]:
+                  - generic [ref=f3e295]: "22"
+                  - code [ref=f3e296]: rounded-card
+                  - generic [ref=f3e297]: 内容卡片
+                - generic [ref=f3e298]:
+                  - generic [ref=f3e300]: "28"
+                  - code [ref=f3e301]: rounded-sheet
+                  - generic [ref=f3e302]: 底部弹层
+            - generic [ref=f3e303]:
+              - generic [ref=f3e304]: 间距 · 4pt
+              - generic [ref=f3e306]:
+                - generic [ref=f3e307]:
+                  - generic [ref=f3e308]:
+                    - generic [ref=f3e309]: "2"
+                    - generic [ref=f3e311]: 图标与文字
+                  - generic [ref=f3e312]:
+                    - generic [ref=f3e313]: "4"
+                    - generic [ref=f3e315]: 紧凑堆叠
+                  - generic [ref=f3e316]:
+                    - generic [ref=f3e317]: "8"
+                    - generic [ref=f3e319]: 标签内边距
+                  - generic [ref=f3e320]:
+                    - generic [ref=f3e321]: "12"
+                    - generic [ref=f3e323]: 卡片内间距
+                  - generic [ref=f3e324]:
+                    - generic [ref=f3e325]: "16"
+                    - generic [ref=f3e327]: 列表内边距
+                  - generic [ref=f3e328]:
+                    - generic [ref=f3e329]: "20"
+                    - generic [ref=f3e331]: 屏边距
+                  - generic [ref=f3e332]:
+                    - generic [ref=f3e333]: "24"
+                    - generic [ref=f3e335]: 分区之间
+                  - generic [ref=f3e336]:
+                    - generic [ref=f3e337]: "32"
+                    - generic [ref=f3e339]: 大分区
+                - generic [ref=f3e341]: 固定尺寸
+                - generic [ref=f3e342]:
+                  - generic [ref=f3e343]: 屏边距
+                  - generic [ref=f3e344]: 20px
+                - generic [ref=f3e345]:
+                  - generic [ref=f3e346]: 区块之间
+                  - generic [ref=f3e347]: 24px
+                - generic [ref=f3e348]:
+                  - generic [ref=f3e349]: 行最小高度
+                  - generic [ref=f3e350]: 44px
+                - generic [ref=f3e351]:
+                  - generic [ref=f3e352]: 导航条
+                  - generic [ref=f3e353]: 44px
+                - generic [ref=f3e354]:
+                  - generic [ref=f3e355]: 标签栏
+                  - generic [ref=f3e356]: 49px
+            - generic [ref=f3e357]:
+              - generic [ref=f3e358]: 阴影
+              - generic [ref=f3e361]:
+                - generic [ref=f3e362]:
+                  - text: card
+                  - generic [ref=f3e363]: 内容卡片 · 1px 发丝 + 落影
+                - generic [ref=f3e364]:
+                  - text: float
+                  - generic [ref=f3e365]: 设备外框 · 悬浮元素
+                - generic [ref=f3e366]:
+                  - text: lift
+                  - generic [ref=f3e367]: 主按钮（带色投影）
+                - generic [ref=f3e368]:
+                  - text: fab
+                  - generic [ref=f3e369]: 右下角悬浮按钮
+                - generic [ref=f3e370]:
+                  - text: sheet
+                  - generic [ref=f3e371]: 底部弹层上缘
+                - generic [ref=f3e372]:
+                  - text: glass
+                  - generic [ref=f3e373]: 毛玻璃 · 导航条 / 标签栏 / 弹层遮罩
+        - generic [ref=f3e374]:
+          - generic [ref=f3e375]:
+            - generic [ref=f3e376]: "05"
+            - heading "动效" [level=3] [ref=f3e377]
+            - generic [ref=f3e378]: MOTION · 只做落位与弹簧
+          - generic [ref=f3e379]:
+            - generic [ref=f3e381]:
+              - generic [ref=f3e382]:
+                - generic [ref=f3e383]:
+                  - text: Push 进入
+                  - generic [ref=f3e384]: 菜谱库 → 详情 / 编辑
+                - code [ref=f3e385]: "x: 26 → 0 · 240ms · ease-ios"
+              - generic [ref=f3e386]:
+                - generic [ref=f3e387]:
+                  - text: Push 退出
+                  - generic [ref=f3e388]: 返回上一层
+                - code [ref=f3e389]: "x: 0 → -18 · 240ms"
+              - generic [ref=f3e390]:
+                - generic [ref=f3e391]:
+                  - text: Tab 切换
+                  - generic [ref=f3e392]: 今日 / 菜谱 / 我的
+                - code [ref=f3e393]: opacity 0 → 1 · 240ms
+              - generic [ref=f3e394]:
+                - generic [ref=f3e395]:
+                  - text: Sheet 上推
+                  - generic [ref=f3e396]: 打卡弹层
+                - code [ref=f3e397]: "y: 100% → 0 · spring(340/34)"
+              - generic [ref=f3e398]:
+                - generic [ref=f3e399]:
+                  - text: Alert 弹出
+                  - generic [ref=f3e400]: 删除确认
+                - code [ref=f3e401]: scale .86 → 1 · spring(420/16)
+              - generic [ref=f3e402]:
+                - generic [ref=f3e403]:
+                  - text: 成功对勾
+                  - generic [ref=f3e404]: 保存成功态
+                - code [ref=f3e405]: scale .4 → 1 · spring(420/16)
+              - generic [ref=f3e406]:
+                - generic [ref=f3e407]:
+                  - text: 分段指示器
+                  - generic [ref=f3e408]: Segmented 控件
+                - code [ref=f3e409]: layoutId 共享元素 · spring(480/38)
+              - generic [ref=f3e410]:
+                - generic [ref=f3e411]:
+                  - text: 进度绘制
+                  - generic [ref=f3e412]: 完成环 · 计量条
+                - code [ref=f3e413]: strokeDashoffset · 1100ms · ease-ios
+            - generic [ref=f3e414]:
+              - generic [ref=f3e415]:
+                - generic [ref=f3e416]: 缓动与时长
+                - generic [ref=f3e418]:
+                  - generic [ref=f3e419]:
+                    - code [ref=f3e420]: ease-ios
+                    - generic [ref=f3e421]: cubic-bezier(.22,.61,.36,1)
+                  - generic [ref=f3e422]:
+                    - code [ref=f3e423]: ease-snap
+                    - generic [ref=f3e424]: cubic-bezier(.34,1.4,.64,1)
+                  - generic [ref=f3e425]:
+                    - code [ref=f3e426]: fast / base / slow
+                    - generic [ref=f3e427]: 160 / 280 / 600 ms
+                  - button "重播 Push 进入" [ref=f3e428]
+              - generic [ref=f3e432]:
+                - paragraph [ref=f3e433]: Push · x 24 → 0
+                - generic [ref=f3e434]: 280ms · ease-ios
+        - generic [ref=f3e435]:
+          - generic [ref=f3e436]:
+            - generic [ref=f3e437]: "06"
+            - heading "图标" [level=3] [ref=f3e438]
+            - generic [ref=f3e439]: ICON · 线性 1.8pt
+          - generic [ref=f3e440]:
+            - generic [ref=f3e443]:
+              - generic [ref=f3e444]: 收藏
+              - generic [ref=f3e448]: 用时
+              - generic [ref=f3e453]: 饮食
+              - generic [ref=f3e460]: 菜谱
+              - generic [ref=f3e464]: 搜索
+              - generic [ref=f3e469]: 新增
+              - generic [ref=f3e472]: 编辑
+              - generic [ref=f3e477]: 删除
+              - generic [ref=f3e482]: 完成
+              - generic [ref=f3e486]: 进入
+              - generic [ref=f3e490]: 关于
+            - generic [ref=f3e494]:
+              - generic [ref=f3e495]: 规则
+              - generic [ref=f3e497]:
+                - list [ref=f3e498]:
+                  - listitem [ref=f3e499]:
+                    - paragraph [ref=f3e501]: 线性、圆头端点、1.8pt 笔画；不填充（仅收藏态例外）
+                  - listitem [ref=f3e502]:
+                    - paragraph [ref=f3e504]: 尺寸只取 14 / 17 / 20 / 24 四档
+                  - listitem [ref=f3e505]:
+                    - paragraph [ref=f3e507]: 颜色只允许 muted（默认）、indigo（可点）、lake-deep（完成）、danger（破坏）
+                  - listitem [ref=f3e508]:
+                    - paragraph [ref=f3e510]: 图标必须与文字标签或 aria-label 成对出现
+                - generic [ref=f3e512]:
+                  - button "默认态" [ref=f3e513]
+                  - button "图片上" [ref=f3e516]
+                  - button "填充态" [ref=f3e520]
+                  - button "悬浮主操作" [ref=f3e524]
+        - generic [ref=f3e526]:
+          - generic [ref=f3e527]:
+            - generic [ref=f3e528]: "07"
+            - heading "组件" [level=3] [ref=f3e529]
+            - generic [ref=f3e530]: COMPONENTS · 全部可交互
+          - generic [ref=f3e531]:
+            - generic [ref=f3e532]:
+              - generic [ref=f3e533]: Button · 6 变体 × 3 尺寸
+              - generic [ref=f3e536]:
+                - button "主按钮 · 保存到今天" [ref=f3e537]
+                - button "浅底按钮 · 补记一餐" [ref=f3e538]
+                - button "灰底按钮 · 取消筛选" [ref=f3e539]
+                - button "反色按钮 · 开始使用" [ref=f3e540]
+                - button "破坏性 · 删除记录" [ref=f3e541]
+                - generic [ref=f3e542]:
+                  - button "小号" [ref=f3e543]
+                  - button "文字按钮" [ref=f3e544]
+                  - button "保存中" [disabled]
+                - button "禁用 · 先写个名字" [disabled]
+            - generic [ref=f3e545]:
+              - generic [ref=f3e546]: Pill / Segmented · 筛选与分段
+              - generic [ref=f3e549]:
+                - generic [ref=f3e550]:
+                  - generic [ref=f3e551]: 全部
+                  - generic [ref=f3e552]: 主食
+                  - generic [ref=f3e553]: 轻食
+                  - generic [ref=f3e554]: 已备齐
+                  - generic [ref=f3e555]: 快手
+                - tablist [ref=f3e556]:
+                  - tab "日" [selected] [ref=f3e557]
+                  - tab "周" [ref=f3e560]
+                  - tab "月" [ref=f3e562]
+                - tablist [ref=f3e564]:
+                  - tab "½ 份" [selected] [ref=f3e565]
+                  - tab "1 份" [ref=f3e568]
+                  - tab "1.5 份" [ref=f3e570]
+            - generic [ref=f3e572]:
+              - generic [ref=f3e573]: ListRow 附件类型 · chevron / check / value / 控件
+              - generic [ref=f3e575]:
+                - button "进入下一级" [ref=f3e576]
+                - button [ref=f3e581]
+                - button [pressed] [ref=f3e582]
+                - generic [ref=f3e586]: 可勾选（食材）
+                - button "单选（分类）" [ref=f3e588]
+                - button "带值 2 次" [ref=f3e593]:
+                  - generic [ref=f3e594]: 带值
+                  - generic [ref=f3e596]: 2 次
+                - generic [ref=f3e599]:
+                  - generic [ref=f3e600]:
+                    - generic [ref=f3e601]: 开关
+                    - generic [ref=f3e602]: 20:30 提醒
+                  - switch "提醒" [checked] [ref=f3e603]
+                - generic [ref=f3e605]:
+                  - generic [ref=f3e606]: 步进器
+                  - generic [ref=f3e608]:
+                    - button "减少份量" [ref=f3e609]
+                    - generic [ref=f3e611]: 2 人份
+                    - button "增加份量" [ref=f3e612]
+                - button "破坏性操作" [ref=f3e614]
+                - button "添加食材" [ref=f3e617]
+            - generic [ref=f3e619]:
+              - generic [ref=f3e620]: Field 输入 · 搜索 / 单行 / 多行 / 表单行
+              - generic [ref=f3e623]:
+                - textbox "搜索菜谱" [ref=f3e628]
+                - generic [ref=f3e629]:
+                  - generic [ref=f3e630]: 名称
+                  - textbox [ref=f3e631]: 番茄牛腩饭
+                - generic [ref=f3e632]:
+                  - generic [ref=f3e633]: 份量
+                  - generic [ref=f3e635]:
+                    - button "减少份量" [ref=f3e636]
+                    - generic [ref=f3e638]: 2 人份
+                    - button "增加份量" [ref=f3e639]
+                - textbox "这一步做什么？" [ref=f3e642]
+            - generic [ref=f3e643]:
+              - generic [ref=f3e644]: Section 容器 · 唯一容器：白卡 · 圆角 22 · 发丝描边
+              - generic [ref=f3e647]:
+                - generic [ref=f3e648]:
+                  - generic [ref=f3e649]: 带标题的区块
+                  - generic [ref=f3e651]:
+                    - generic [ref=f3e653]:
+                      - generic [ref=f3e654]: 行一
+                      - generic [ref=f3e655]: 副文案
+                    - generic [ref=f3e658]:
+                      - generic [ref=f3e659]: 行二
+                      - generic [ref=f3e661]: 值
+                  - generic [ref=f3e662]: 区块脚注说明
+                - paragraph [ref=f3e665]: 信息底 · 用于提示与强调
+                - generic [ref=f3e666]:
+                  - generic [ref=f3e667]: 默认
+                  - generic [ref=f3e668]: 蓝
+                  - generic [ref=f3e669]: 绿
+                  - generic [ref=f3e670]: 红
+            - generic [ref=f3e671]:
+              - generic [ref=f3e672]: Data viz · 环 / 条 / 计量 / 迷你柱
+              - generic [ref=f3e674]:
+                - generic [ref=f3e675]:
+                  - generic [ref=f3e680]:
+                    - generic [ref=f3e681]: "2"
+                    - generic [ref=f3e682]: 次记录
+                  - generic [ref=f3e683]:
+                    - generic [ref=f3e685]:
+                      - generic [ref=f3e686]: 今日记录
+                      - generic [ref=f3e687]: 2/2 次
+                    - generic [ref=f3e690]:
+                      - generic [ref=f3e691]: 饮水
+                      - generic [ref=f3e692]: 6/8 杯
+                - generic [ref=f3e696]:
+                  - generic [ref=f3e706]:
+                    - generic [ref=f3e707]: 一
+                    - generic [ref=f3e708]: 二
+                    - generic [ref=f3e709]: 三
+                    - generic [ref=f3e710]: 四
+                    - generic [ref=f3e711]: 五
+                    - generic [ref=f3e712]: 六
+                    - generic [ref=f3e713]: 日
+                  - generic [ref=f3e714]:
+                    - generic [ref=f3e715]:
+                      - generic [ref=f3e716]: "17"
+                      - generic [ref=f3e717]: 本周记录
+                    - generic [ref=f3e718]:
+                      - generic [ref=f3e719]: 2.4 次
+                      - generic [ref=f3e720]: 日均
+                    - generic [ref=f3e721]:
+                      - generic [ref=f3e722]: 86%
+                      - generic [ref=f3e723]: 月完成率
+            - generic [ref=f3e724]:
+              - generic [ref=f3e725]: Heatmap · 28 天 · 真实数据 · 可点
+              - generic [ref=f3e728]:
+                - generic [ref=f3e729]:
+                  - generic [ref=f3e730]:
+                    - generic [ref=f3e731]: 一
+                    - generic [ref=f3e732]: 二
+                    - generic [ref=f3e733]: 三
+                    - generic [ref=f3e734]: 四
+                    - generic [ref=f3e735]: 五
+                    - generic [ref=f3e736]: 六
+                    - generic [ref=f3e737]: 日
+                  - generic [ref=f3e738]:
+                    - button "记录 3 餐" [disabled] [ref=f3e739]
+                    - button "记录 2 餐" [disabled] [ref=f3e740]
+                    - button "记录 0 餐" [disabled] [ref=f3e741]
+                    - button "记录 1 餐" [disabled] [ref=f3e742]
+                    - button "记录 3 餐" [disabled] [ref=f3e743]
+                    - button "记录 3 餐" [disabled] [ref=f3e744]
+                    - button "记录 1 餐" [disabled] [ref=f3e745]
+                    - button "记录 2 餐" [disabled] [ref=f3e746]
+                    - button "记录 3 餐" [disabled] [ref=f3e747]
+                    - button "记录 3 餐" [disabled] [ref=f3e748]
+                    - button "记录 0 餐" [disabled] [ref=f3e749]
+                    - button "记录 2 餐" [disabled] [ref=f3e750]
+                    - button "记录 3 餐" [disabled] [ref=f3e751]
+                    - button "记录 2 餐" [disabled] [ref=f3e752]
+                    - button "记录 1 餐" [disabled] [ref=f3e753]
+                    - button "记录 0 餐" [disabled] [ref=f3e754]
+                    - button "记录 3 餐" [disabled] [ref=f3e755]
+                    - button "记录 3 餐" [disabled] [ref=f3e756]
+                    - button "记录 2 餐" [disabled] [ref=f3e757]
+                    - button "记录 3 餐" [disabled] [ref=f3e758]
+                    - button "记录 3 餐" [disabled] [ref=f3e759]
+                    - button "记录 1 餐" [disabled] [ref=f3e760]
+                    - button "记录 2 餐" [disabled] [ref=f3e761]
+                    - button "记录 3 餐" [disabled] [ref=f3e762]
+                    - button "记录 0 餐" [disabled] [ref=f3e763]
+                    - button "记录 3 餐" [disabled] [ref=f3e764]
+                    - button "记录 3 餐" [disabled] [ref=f3e765]
+                    - button "记录 3 餐" [disabled] [ref=f3e766]
+                - generic [ref=f3e767]:
+                  - generic [ref=f3e768]: 22 / 28 天有记录
+                  - generic [ref=f3e769]: 少多
+            - generic [ref=f3e774]:
+              - generic [ref=f3e775]: Skeleton / EmptyState · 加载与空态
+              - generic [ref=f3e784]:
+                - paragraph [ref=f3e789]: 没有匹配的菜谱
+                - generic [ref=f3e790]: 换一个关键词，或把它记成新的一道。
+                - generic [ref=f3e792]:
+                  - button "清除筛选" [ref=f3e793]
+                  - button "新建菜谱" [ref=f3e794]
+            - generic [ref=f3e795]:
+              - generic [ref=f3e796]: NavBar · 范式 A/B · Large Title 与紧凑导航条
+              - generic [ref=f3e799]:
+                - generic [ref=f3e801]:
+                  - heading "今天" [level=1] [ref=f3e802]
+                  - generic [ref=f3e803]: 9 月 22 日 · 星期二
+                - generic [ref=f3e804]: Tab 根页面使用 Large Title
+                - generic [ref=f3e812]:
+                  - generic [ref=f3e813]: 取消
+                  - generic [ref=f3e815]: 编辑菜谱
+                  - generic [ref=f3e816]: 完成
+                - generic [ref=f3e818]: Push 页面使用毛玻璃紧凑导航条：返回 / 标题 / 动作
+            - generic [ref=f3e819]:
+              - generic [ref=f3e820]: TabBar + FAB · 三枚纯 Tab，主操作交给悬浮键
+              - generic [ref=f3e823]:
+                - button "记一笔" [ref=f3e825]
+                - generic [ref=f3e828]:
+                  - button "今日" [ref=f3e829]
+                  - button "菜谱" [ref=f3e834]
+                  - button "我的" [ref=f3e838]
+            - generic [ref=f3e842]:
+              - generic [ref=f3e843]: Sheet / Success · 弹层与成功态
+              - generic [ref=f3e846]:
+                - paragraph [ref=f3e847]: 弹层使用 spring(380/36) 上推，遮罩毛玻璃，标题左对齐、动作在右上或底部。 保存后对勾以 spring(420/18) 落下，700ms 后自动收起。
+                - generic [ref=f3e848]:
+                  - button "打开弹层" [ref=f3e849]
+                  - button "仅成功态" [ref=f3e850]
+                - generic [ref=f3e851]: 成功覆盖层占位
+            - generic [ref=f3e853]:
+              - generic [ref=f3e854]: FullScreenModal · 自成体任务的全屏层
+              - generic [ref=f3e857]:
+                - paragraph [ref=f3e858]: 顶部左右各一枚圆形按钮、中间标题：左取消（灵灰底）、右提交（蓝底白对勾）。 给「要么完成要么放弃」的表单用，比如新建 / 编辑菜谱； 层级浏览仍用 Push 路由，轻量就地输入用 Sheet。
+                - button "打开全屏弹窗" [ref=f3e859]
+            - generic [ref=f3e860]:
+              - generic [ref=f3e861]: Alert · 破坏性操作的唯一确认方式
+              - generic [ref=f3e864]:
+                - paragraph [ref=f3e865]: 删除一律走 Alert，不做「再点一次确认」这类隐式二次点击。 确认按钮为系统红，取消为系统蓝。
+                - button "删除这道菜谱" [ref=f3e866]
+            - generic [ref=f3e867]:
+              - generic [ref=f3e868]: Typography · 七个文本原语
+              - generic [ref=f3e871]:
+                - generic [ref=f3e872]: "21"
+                - heading "今天" [level=1] [ref=f3e873]
+                - heading "番茄牛腩饭" [level=2] [ref=f3e874]
+                - heading "今日饮食" [level=3] [ref=f3e875]
+                - paragraph [ref=f3e876]: 点一下，把这一餐收进来
+                - text: 12:40 · 1 份今日记录
+            - generic [ref=f3e877]:
+              - generic [ref=f3e878]: BottomActionBar · 详情页固定主操作
+              - generic [ref=f3e882]:
+                - button "做好了，记一笔" [ref=f3e883]
+                - generic [ref=f3e884]: 上次做于 3 天前 · 累计 12 次
+        - generic [ref=f3e885]:
+          - generic [ref=f3e886]:
+            - generic [ref=f3e887]: "08"
+            - heading "页面组合规范" [level=3] [ref=f3e888]
+            - generic [ref=f3e889]: COMPOSITION · 页面只做组合
+          - generic [ref=f3e892]:
+            - generic [ref=f3e893]:
+              - generic [ref=f3e894]: 路由
+              - generic [ref=f3e895]: 页面
+              - generic [ref=f3e896]: 范式
+              - generic [ref=f3e897]: 数据
+              - generic [ref=f3e898]: 组合的组件
+            - generic [ref=f3e899]:
+              - code [ref=f3e900]: /welcome
+              - generic [ref=f3e901]: 欢迎
+              - generic [ref=f3e902]: 启动
+              - code [ref=f3e903]: —
+              - generic [ref=f3e904]:
+                - generic [ref=f3e905]: PhoneFrame
+                - generic [ref=f3e906]: Button
+                - generic [ref=f3e907]: Metric
+                - generic [ref=f3e908]: Micro
+                - generic [ref=f3e909]: grain
+            - generic [ref=f3e910]:
+              - code [ref=f3e911]: /register
+              - generic [ref=f3e912]: 注册
+              - generic [ref=f3e913]: 启动
+              - code [ref=f3e914]: POST /api/auth/register
+              - generic [ref=f3e915]:
+                - generic [ref=f3e916]: NavBar
+                - generic [ref=f3e917]: Section
+                - generic [ref=f3e918]: CheckCircle
+                - generic [ref=f3e919]: Button
+                - generic [ref=f3e920]: Caption
+            - generic [ref=f3e921]:
+              - code [ref=f3e922]: /login
+              - generic [ref=f3e923]: 登录
+              - generic [ref=f3e924]: 启动
+              - code [ref=f3e925]: POST /api/auth/login
+              - generic [ref=f3e926]:
+                - generic [ref=f3e927]: NavBar
+                - generic [ref=f3e928]: Section
+                - generic [ref=f3e929]: Display
+                - generic [ref=f3e930]: Button
+                - generic [ref=f3e931]: Caption
+            - generic [ref=f3e932]:
+              - code [ref=f3e933]: /today
+              - generic [ref=f3e934]: 今日
+              - generic [ref=f3e935]: Tab
+              - code [ref=f3e936]: GET /api/checkins
+              - generic [ref=f3e937]:
+                - generic [ref=f3e938]: Ring
+                - generic [ref=f3e939]: Sparkbars
+                - generic [ref=f3e940]: ListGroup
+                - generic [ref=f3e941]: ListRow
+                - generic [ref=f3e942]: CheckCircle
+                - generic [ref=f3e943]: Stepper
+                - generic [ref=f3e944]: Badge
+            - generic [ref=f3e945]:
+              - code [ref=f3e946]: /recipes
+              - generic [ref=f3e947]: 菜谱库
+              - generic [ref=f3e948]: Tab
+              - code [ref=f3e949]: GET /api/recipes
+              - generic [ref=f3e950]:
+                - generic [ref=f3e951]: SearchField
+                - generic [ref=f3e952]: Segmented
+                - generic [ref=f3e953]: Pill
+                - generic [ref=f3e954]: Card
+                - generic [ref=f3e955]: ListRow
+                - generic [ref=f3e956]: Skeleton
+                - generic [ref=f3e957]: EmptyState
+            - generic [ref=f3e958]:
+              - code [ref=f3e959]: /recipes/[slug]
+              - generic [ref=f3e960]: 菜谱详情
+              - generic [ref=f3e961]: Push
+              - code [ref=f3e962]: GET /api/recipes、GET /api/recipes/[slug]/history
+              - generic [ref=f3e963]:
+                - generic [ref=f3e964]: NavBar
+                - generic [ref=f3e965]: Segmented
+                - generic [ref=f3e966]: CheckCircle
+                - generic [ref=f3e967]: Stepper
+                - generic [ref=f3e968]: ListGroup
+                - generic [ref=f3e969]: Badge
+                - generic [ref=f3e970]: Button
+            - generic [ref=f3e971]:
+              - code [ref=f3e972]: /recipes/new
+              - generic [ref=f3e973]: 新建菜谱
+              - generic [ref=f3e974]: Modal
+              - code [ref=f3e975]: POST /api/recipes
+              - generic [ref=f3e976]:
+                - generic [ref=f3e977]: FullScreenModal
+                - generic [ref=f3e978]: RecipeEditor
+                - generic [ref=f3e979]: ListGroup
+                - generic [ref=f3e980]: TextInput
+                - generic [ref=f3e981]: Segmented
+                - generic [ref=f3e982]: Stepper
+            - generic [ref=f3e983]:
+              - code [ref=f3e984]: /recipes/[slug]/edit
+              - generic [ref=f3e985]: 编辑菜谱
+              - generic [ref=f3e986]: Modal
+              - code [ref=f3e987]: PATCH /api/recipes
+              - generic [ref=f3e988]:
+                - generic [ref=f3e989]: FullScreenModal
+                - generic [ref=f3e990]: RecipeEditor
+                - generic [ref=f3e991]: ListGroup
+                - generic [ref=f3e992]: TextInput
+                - generic [ref=f3e993]: Segmented
+                - generic [ref=f3e994]: Button
+            - generic [ref=f3e995]:
+              - code [ref=f3e996]: /checkin
+              - generic [ref=f3e997]: 打卡弹层
+              - generic [ref=f3e998]: Modal
+              - code [ref=f3e999]: POST / PATCH / DELETE /api/checkins
+              - generic [ref=f3e1000]:
+                - generic [ref=f3e1001]: Sheet
+                - generic [ref=f3e1002]: Segmented
+                - generic [ref=f3e1003]: TextArea
+                - generic [ref=f3e1004]: SuccessOverlay
+                - generic [ref=f3e1005]: Button
+                - generic [ref=f3e1006]: Badge
+            - generic [ref=f3e1007]:
+              - code [ref=f3e1008]: /profile
+              - generic [ref=f3e1009]: 我的
+              - generic [ref=f3e1010]: Tab
+              - code [ref=f3e1011]: GET /api/stats、GET /api/taxonomies
+              - generic [ref=f3e1012]:
+                - generic [ref=f3e1013]: Heatmap
+                - generic [ref=f3e1014]: Card
+                - generic [ref=f3e1015]: Stat
+                - generic [ref=f3e1016]: ListGroup
+                - generic [ref=f3e1017]: ListRow
+                - generic [ref=f3e1018]: Alert
+                - generic [ref=f3e1019]: Micro
+            - generic [ref=f3e1020]:
+              - code [ref=f3e1021]: /profile/categories
+              - generic [ref=f3e1022]: 分类管理
+              - generic [ref=f3e1023]: Modal
+              - code [ref=f3e1024]: GET/POST/PATCH/DELETE /api/taxonomies
+              - generic [ref=f3e1025]:
+                - generic [ref=f3e1026]: FullScreenModal
+                - generic [ref=f3e1027]: Section
+                - generic [ref=f3e1028]: ListRow
+                - generic [ref=f3e1029]: Sheet
+                - generic [ref=f3e1030]: Alert
+                - generic [ref=f3e1031]: TextInput
+            - generic [ref=f3e1032]:
+              - code [ref=f3e1033]: /profile/tags
+              - generic [ref=f3e1034]: 标签管理
+              - generic [ref=f3e1035]: Modal
+              - code [ref=f3e1036]: GET/POST/PATCH/DELETE /api/taxonomies
+              - generic [ref=f3e1037]:
+                - generic [ref=f3e1038]: FullScreenModal
+                - generic [ref=f3e1039]: Section
+                - generic [ref=f3e1040]: ListRow
+                - generic [ref=f3e1041]: Sheet
+                - generic [ref=f3e1042]: Alert
+                - generic [ref=f3e1043]: EmptyState
+          - generic [ref=f3e1044]:
+            - generic [ref=f3e1046]:
+              - text: Do
+              - list [ref=f3e1047]:
+                - listitem [ref=f3e1048]:
+                  - paragraph [ref=f3e1051]: 所有内容都装进 Section：白卡、圆角 22、1px 发丝描边、一层极轻落影
+                - listitem [ref=f3e1052]:
+                  - paragraph [ref=f3e1055]: 行结构统一为 前导 / 主文案 / 副文案 / 值 / 附件
+                - listitem [ref=f3e1056]:
+                  - paragraph [ref=f3e1059]: 蓝色只给可点元素；完成态用绿色填充
+                - listitem [ref=f3e1060]:
+                  - paragraph [ref=f3e1063]: 破坏性操作一律 Alert 确认
+                - listitem [ref=f3e1064]:
+                  - paragraph [ref=f3e1067]: 新页面先问：能否只组合已有组件完成
+            - generic [ref=f3e1069]:
+              - text: Don't
+              - list [ref=f3e1070]:
+                - listitem [ref=f3e1071]:
+                  - paragraph [ref=f3e1073]: 不要混用卡片阴影、描边容器与全出血色带
+                - listitem [ref=f3e1074]:
+                  - paragraph [ref=f3e1076]: 不要在 Push 页使用 Large Title，反之亦然
+                - listitem [ref=f3e1077]:
+                  - paragraph [ref=f3e1079]: "不要写死 #hex、圆角、阴影或动效曲线"
+                - listitem [ref=f3e1080]:
+                  - paragraph [ref=f3e1082]: 不要放没有真实结果的按钮或统计
+                - listitem [ref=f3e1083]:
+                  - paragraph [ref=f3e1085]: 不要让图标独自承担语义
+          - generic [ref=f3e1087]:
+            - button "返回展示台 交互原型 · 路由图 · 全部页面" [ref=f3e1088]:
+              - generic [ref=f3e1089]:
+                - generic [ref=f3e1090]: 返回展示台
+                - generic [ref=f3e1091]: 交互原型 · 路由图 · 全部页面
+            - button "打开应用 /today" [ref=f3e1094]:
+              - generic [ref=f3e1095]:
+                - generic [ref=f3e1096]: 打开应用
+                - generic [ref=f3e1097]: /today
+          - paragraph [ref=f3e1100]:
+            - generic [ref=f3e1101]:
+              - link "展示台首页" [ref=f3e1102] [cursor=pointer]:
+                - /url: /
+              - text: · 为进入下一级的统一附件
+  - button "Open Next.js Dev Tools" [ref=f3e1113] [cursor=pointer]

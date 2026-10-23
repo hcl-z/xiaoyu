@@ -6,11 +6,12 @@ import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
+import { CoverField } from '@/chrome/cover-field';
 import { Alert, SuccessOverlay, TaskScreen } from '@/chrome/overlays';
 import { Button, IconButton } from '@/components/button';
 import { Pill, Stepper } from '@/components/controls';
 import { Icon } from '@/components/icon';
-import { FieldRow, TextArea, TextField } from '@/components/inputs';
+import { FieldError, FormGroup, FormRow, TextArea, TextField } from '@/components/inputs';
 import { EmptyState, ListRow, Section, Skeleton } from '@/components/surfaces';
 import { Body, Caption, Micro } from '@/components/text';
 import { useRecipes, useTaxonomies, type RecipeSave } from '@/data/store';
@@ -40,6 +41,7 @@ function snapshot(v: {
   tags: string[];
   groups: Group[];
   steps: string[];
+  image: string;
 }) {
   return JSON.stringify([
     v.title.trim(),
@@ -52,6 +54,7 @@ function snapshot(v: {
       items: g.items.map((item) => ({ name: item.name.trim(), amount: item.amount.trim() })),
     })),
     v.steps.map((step) => step.trim()),
+    v.image,
   ]);
 }
 
@@ -145,6 +148,11 @@ function RecipeEditorForm({
   onDeleted: () => void;
 }) {
   const [title, setTitle] = useState(recipe?.title ?? '');
+  /**
+   * 标题是不是被“碰过”（失焦或非空）。
+   * 没有它就只能在空表单上顶着一条报错，而用户什么都还没做。
+   */
+  const [titleTouched, setTitleTouched] = useState(false);
   const [subtitle, setSubtitle] = useState(recipe?.subtitle ?? '');
   const [category, setCategory] = useState<string>(recipe?.category ?? '');
   const [minutes, setMinutes] = useState(recipe?.minutes ?? 20);
@@ -157,6 +165,8 @@ function RecipeEditorForm({
       : [{ group: '主料', items: [{ name: '', amount: '' }] }]
   );
   const [steps, setSteps] = useState<string[]>(recipe?.steps.length ? [...recipe.steps] : ['']);
+  /** 封面图：站内相对路径（/api/photos/<id>），空串表示没设 */
+  const [image, setImage] = useState(recipe?.image ?? '');
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<SaveResult | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -189,10 +199,12 @@ function RecipeEditorForm({
           ? recipe.ingredients.map((g) => ({ group: g.group, items: [...g.items] }))
           : [{ group: '主料', items: [{ name: '', amount: '' }] }],
         steps: recipe?.steps.length ? [...recipe.steps] : [''],
+        image: recipe?.image ?? '',
       }),
     [recipe]
   );
-  const dirty = snapshot({ title, subtitle, category, minutes, tags, groups, steps }) !== base;
+  const dirty =
+    snapshot({ title, subtitle, category, minutes, tags, groups, steps, image }) !== base;
 
   /** 关闭前的最后一道闸：草稿没保存就退出，先让人知道 */
   const requestClose = () => {
@@ -245,7 +257,7 @@ function RecipeEditorForm({
       category: activeCategory,
       minutes,
       servings,
-      image: recipe?.image ?? '',
+      image,
       favorite: recipe?.favorite ?? false,
       cooked: recipe?.cooked ?? 0,
       tags,
@@ -293,7 +305,7 @@ function RecipeEditorForm({
       <TaskScreen
         title={heading}
         onClose={requestClose}
-        subtitle={valid ? undefined : '名称是必填项'}
+        subtitle={titleTouched && !valid ? '名称不能为空' : valid ? undefined : '名称是必填项'}
         leading={{ icon: 'x', label: '取消', onPress: requestClose }}
         trailing={{
           icon: 'check',
@@ -302,29 +314,60 @@ function RecipeEditorForm({
           disabled: !valid || saving || result !== null,
           tone: 'accent',
         }}>
-        <View className="px-5 pt-5" style={{ rowGap: 20 }}>
-          <Section title="基本信息" footer={valid ? undefined : '名称是唯一的必填项'}>
-            <FieldRow label="名称" align="left">
+        {/*
+         * 屏边距由这一层统一给（与其它屏幕一致：Section 只负责卡片，
+         * 不管左右边距）。以前是每个子块自己写 px-5，导致 Section 的卡片
+         * 直接顶到屏幕边（实测只剩 3px）。
+         * 注意：卡片**内部**的行仍然要自己写 px-4，那是另一层。
+         */}
+        <View className="px-5 pt-5" style={{ rowGap: 22 }}>
+          {/* 左图右文：封面与名称 / 备注同属「这道菜长什么样」，放一块里 */}
+          <View className="flex-row items-start gap-3">
+            <CoverField value={image} onChange={setImage} disabled={saving} />
+            <View className="min-w-0 flex-1" style={{ rowGap: 8 }}>
+              {/*
+               * 封面旁边的两个字段用 stacked：框内上方小标签 + 下方值。
+               * 横向只剩封面右边这么窄，inline 的左侧标签会把输入区挤得很短。
+               * rowGap 8（不是 10）是为了让两个框叠起来正好等于封面高度：
+               * 每框 7+14+2+22+7 = 52，两个 104，加上 8 就是 110 ≈ THUMB。
+               */}
               <TextField
                 value={title}
                 onChange={setTitle}
+                onBlur={() => setTitleTouched(true)}
                 align="left"
-                placeholder="例如：番茄牛腩饭"
-                label="名称"
-                className="flex-1"
+                placeholder="番茄牛腩饭"
+                label="菜名"
+                layout="stacked"
               />
-            </FieldRow>
-            <FieldRow label="备注" align="left">
               <TextField
                 value={subtitle}
                 onChange={setSubtitle}
                 align="left"
-                placeholder="一句话说明这道菜（可选）"
+                placeholder="一句话说明（可选）"
                 label="备注"
-                className="flex-1"
+                layout="stacked"
               />
-            </FieldRow>
-          </Section>
+            </View>
+          </View>
+
+          {/*
+           * 名称是必填，但只在用户“碰过”之后才报错。
+           * 以前直接拿 !valid 当错误条件，于是一进新建页就顶着一条红字——
+           * 用户还没开始填，就先被指责了一顿。
+           */}
+          {titleTouched && !valid ? <FieldError>名称是唯一的必填项</FieldError> : null}
+
+          {/*
+           * FormGroup 自带 px-5，而外层容器已经有 px-5——
+           * 直接嵌进去会变成 40pt 缩进（比其它行深一半）。
+           * 这里用 px-0 把 FormGroup 自己的边距清掉，只留外层那一层。
+           */}
+          <FormGroup className="px-0">
+            <FormRow label="用时">
+              <Stepper value={minutes} onChange={setMinutes} min={5} max={240} suffix=" 分钟" />
+            </FormRow>
+          </FormGroup>
 
           <Section title="分类" footer="分类可在「我的 › 分类管理」中增删改">
             {categoryOptions.map((c) => (
@@ -336,19 +379,6 @@ function RecipeEditorForm({
                 onPress={() => setCategory(c)}
               />
             ))}
-          </Section>
-
-          <Section title="烹饪">
-            <FieldRow label="用时">
-              <Stepper
-                label="用时"
-                value={minutes}
-                onChange={setMinutes}
-                min={5}
-                max={240}
-                suffix=" 分钟"
-              />
-            </FieldRow>
           </Section>
 
           <Section
@@ -398,6 +428,8 @@ function RecipeEditorForm({
                   placeholder="标签名，回车即添加"
                   label="新建标签"
                   onSubmit={() => void commitTag()}
+                  /* 外层已经画了描边容器，输入框不再套一层 */
+                  inline
                   className="flex-1"
                 />
                 <Pressable
@@ -459,7 +491,17 @@ function RecipeEditorForm({
                     ) : null}
                   </View>
                 }>
-                <FieldRow label="分组名" align="left">
+                {/*
+                 * 分组名与下面的食材行一样走无边框内联：
+                 * 它本来就在 Section 的卡片里，旁边还有「删除分组」，
+                 * 再套一个白底描边框就是框中框。
+                 * px-4 是卡片内的行内边距——外层 px-5 只管卡片外边距，
+                 * 两者不是同一层，不能互相替代。
+                 */}
+                <View className="flex-row items-center gap-3 px-4 py-2.5">
+                  <Body tone="muted" weight="font-normal" className="shrink-0">
+                    分组名
+                  </Body>
                   <TextField
                     value={group.group}
                     onChange={(v) =>
@@ -468,18 +510,25 @@ function RecipeEditorForm({
                     align="left"
                     placeholder="主料 / 调味"
                     label="分组名"
+                    inline
                     className="flex-1"
                   />
-                </FieldRow>
+                </View>
 
                 {group.items.map((item, ii) => (
                   <View key={ii} className="flex-row items-center gap-2 px-4 py-2">
+                    {/*
+                     * 密集行用 inline（不套框、不写标签）：
+                     * 一行里已经有「食材 / 用量 / 删除」三个控件，
+                     * 再给每个输入套一层白底描边框会变成四个框叠在一起。
+                     * 标签也不重复写——placeholder 已经把意思说清楚了。
+                     */}
                     <TextField
                       value={item.name}
                       onChange={(v) => setItem(gi, ii, { name: v })}
                       align="left"
                       placeholder="食材"
-                      label="食材"
+                      inline
                       className="flex-1"
                     />
                     <View className="bg-hair h-5 w-px" />
@@ -489,7 +538,7 @@ function RecipeEditorForm({
                         onChange={(v) => setItem(gi, ii, { amount: v })}
                         align="right"
                         placeholder="用量"
-                        label="用量"
+                        inline
                       />
                     </View>
                     <IconButton
@@ -518,7 +567,7 @@ function RecipeEditorForm({
                       )
                     )
                   }
-                  className="active:bg-tint/70 min-h-11 w-full flex-row items-center gap-2 px-4 py-3">
+                  className="active:bg-fill/60 min-h-11 w-full flex-row items-center gap-2 px-4 py-3">
                   <Icon name="plus" size="md" tone="accent" strokeWidth={2.4} />
                   <Body tone="accent">添加食材</Body>
                 </Pressable>
@@ -553,12 +602,17 @@ function RecipeEditorForm({
                   </Body>
                 </View>
                 <View className="min-w-0 flex-1">
+                  {/*
+                   * 步骤行左边的序号圆点已经说明了“第几步”，
+                   * TextArea 不再重复写 label（以前是「第 3 步」+ 圆点「3」两份）。
+                   * 也不套输入框——整卡已经在 Section 里，再套一层就是框中框。
+                   */}
                   <TextArea
                     value={step}
                     onChange={(v) => setSteps((list) => list.map((s, j) => (j === i ? v : s)))}
                     rows={step.length > 34 ? 2 : 1}
-                    label={`第 ${i + 1} 步`}
                     placeholder="这一步做什么？"
+                    bare
                   />
                 </View>
                 {steps.length > 1 ? (
@@ -576,7 +630,7 @@ function RecipeEditorForm({
               accessibilityRole="button"
               accessibilityLabel="添加步骤"
               onPress={() => setSteps((list) => [...list, ''])}
-              className="active:bg-tint/70 min-h-11 w-full flex-row items-center gap-2 px-4 py-3">
+              className="active:bg-fill/60 min-h-11 w-full flex-row items-center gap-2 px-4 py-3">
               <Icon name="plus" size="md" tone="accent" strokeWidth={2.4} />
               <Body tone="accent">添加步骤</Body>
             </Pressable>

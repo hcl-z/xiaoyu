@@ -9,8 +9,8 @@
  * 约定：NativeWind 只接管 react-native 的核心组件，不接管 Animated.View，
  * 因此动画容器一律用 style（令牌派生），className 交给内部的核心组件。
  */
-import { useEffect, useState, type ReactNode } from 'react';
-import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
+import { Pressable, View, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   Easing,
   Extrapolation,
@@ -20,6 +20,7 @@ import Animated, {
   interpolateColor,
   LinearTransition,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withDelay,
   withSpring,
@@ -36,6 +37,33 @@ import { motion as mt } from '@/theme';
 const easeIos = Easing.bezier(mt.ease[0], mt.ease[1], mt.ease[2], mt.ease[3]);
 const ms = (seconds: number) => seconds * 1000;
 const CONTROL_TRANSITION_MS = 200;
+
+/* ------------------------------------------------------------------ */
+/* 减弱动效 · Reduce Motion                                             */
+/* ------------------------------------------------------------------ */
+/**
+ * 系统「减弱动态效果」开关。开启后所有位移 / 缩放 / 弹簧都塌缩成极短的淡入，
+ * 既不消失也不让人难受——这是可访问性要求，不是可选项。
+ *
+ * 用法：需要做「位移或缩放」的组件先读这个值，再决定用哪套参数；
+ * 纯透明度过渡不受影响，可以照常播放。
+ */
+export function useMotionPreference(): {
+  /** 系统是否要求减弱动效 */
+  reduceMotion: boolean;
+  /** 位移 / 缩放类过渡的时长（秒）；减弱时塌缩为 0 */
+  spatialDuration: (seconds: number) => number;
+  /** 逐项错峰延迟（秒）；减弱时一律为 0 */
+  spatialStagger: (index: number, step: number) => number;
+} {
+  const reduceMotion = useReducedMotion();
+
+  return {
+    reduceMotion,
+    spatialDuration: (seconds) => (reduceMotion ? 0 : seconds),
+    spatialStagger: (index, step) => (reduceMotion ? 0 : index * step),
+  };
+}
 
 /** 每项错峰延迟（毫秒），与 Web 的 delay: index * step 对齐 */
 export function stagger(index: number, step: number) {
@@ -104,7 +132,7 @@ export function FadeIn({ children, delay = 0, duration = mt.duration.base, style
   return <Animated.View style={[animated, style]}>{children}</Animated.View>;
 }
 
-/** 滑入落位：push 从右侧 26，上浮从下方 16 */
+/** 滑入落位：push 从右侧 26，上浮从下方 16（减弱动效时只保留淡入） */
 export function SlideIn({
   children,
   from = 'right',
@@ -112,8 +140,10 @@ export function SlideIn({
   duration = mt.duration.base,
   style,
 }: EnterProps & { from?: 'right' | 'up' }) {
+  const reduceMotion = useReducedMotion();
   const progress = useSharedValue(0);
-  const offset = from === 'right' ? 26 : 16;
+  // 减弱动效：位移归零，只留一次淡入
+  const offset = reduceMotion ? 0 : from === 'right' ? 26 : 16;
 
   useEffect(() => {
     progress.set(withDelay(ms(delay), withTiming(1, { duration: ms(duration), easing: easeIos })));
@@ -130,7 +160,7 @@ export function SlideIn({
   return <Animated.View style={[animated, style]}>{children}</Animated.View>;
 }
 
-/** 弹簧落位：Alert 弹出用 0.86，成功对勾用 0.4 */
+/** 弹簧落位：Alert 弹出用 0.86，成功对勾用 0.4（减弱动效时只保留淡入） */
 export function ScaleIn({
   children,
   from = 0.86,
@@ -138,7 +168,10 @@ export function ScaleIn({
   spring = mt.spring.pop,
   style,
 }: EnterProps & { from?: number; spring?: { damping: number; stiffness: number; mass?: number } }) {
+  const reduceMotion = useReducedMotion();
   const progress = useSharedValue(0);
+  // 减弱动效：缩放归零，只留一次淡入
+  const start = reduceMotion ? 1 : from;
 
   const damping = spring.damping;
   const stiffness = spring.stiffness;
@@ -150,10 +183,253 @@ export function ScaleIn({
 
   const animated = useAnimatedStyle(() => ({
     opacity: interpolate(progress.get(), [0, 1], [0, 1], Extrapolation.CLAMP),
-    transform: [{ scale: interpolate(progress.get(), [0, 1], [from, 1], Extrapolation.CLAMP) }],
+    transform: [{ scale: interpolate(progress.get(), [0, 1], [start, 1], Extrapolation.CLAMP) }],
   }));
 
   return <Animated.View style={[animated, style]}>{children}</Animated.View>;
+}
+
+/* ------------------------------------------------------------------ */
+/* 内容换批 · SwapIn / useSwapKey                                       */
+/* ------------------------------------------------------------------ */
+/**
+ * 内容换批（列表筛选、Tab 面板、日期切换）时新内容如何落位。
+ *
+ * 与 FadeIn 的区别：FadeIn 只在挂载时播一次；SwapIn 由 key 驱动，
+ * key 一变就重播，所以同一块容器换内容时也有落位动效。
+ * 方向 +1 表示内容向「前」走（右侧滑入），-1 表示向后（左侧滑入）。
+ */
+export function SwapIn({
+  swapKey,
+  children,
+  direction = 1,
+  distance = 10,
+  duration = mt.duration.base,
+  style,
+}: {
+  /** 内容身份。变化即重播入场动效 */
+  swapKey: string | number;
+  children: ReactNode;
+  /** +1 向右滑入，-1 向左滑入 */
+  direction?: 1 | -1;
+  /** 滑入位移（点） */
+  distance?: number;
+  duration?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const reduceMotion = useReducedMotion();
+  const progress = useSharedValue(0);
+  const travel = reduceMotion ? 0 : direction * distance;
+
+  useEffect(() => {
+    progress.set(0);
+    progress.set(withTiming(1, { duration: ms(duration), easing: easeIos }));
+  }, [progress, duration, swapKey]);
+
+  const animated = useAnimatedStyle(() => {
+    const p = progress.get();
+    return {
+      opacity: interpolate(p, [0, 1], [0, 1], Extrapolation.CLAMP),
+      transform: [{ translateX: interpolate(p, [0, 1], [travel, 0], Extrapolation.CLAMP) }],
+    };
+  });
+
+  return <Animated.View style={[animated, style]}>{children}</Animated.View>;
+}
+
+/**
+ * 内容切换方向的公共骨架："props 变化时调整 state"（React 官方模式，
+ * 不在 render 期写 ref），把「上一个值」与「新值」交给 compare 决定方向。
+ * compare 返回 1 / -1 表示新旧次序；返回 0 或 undefined 表示无序，保持原方向。
+ */
+function useDirection(
+  current: string | number,
+  compare: (prev: string | number, next: string | number) => 1 | -1 | 0
+) {
+  const [prev, setPrev] = useState(current);
+  const [direction, setDirection] = useState<1 | -1>(1);
+
+  if (prev !== current) {
+    const next = compare(prev, current);
+    setPrev(current);
+    if (next !== 0) setDirection(next);
+  }
+
+  return direction;
+}
+
+/**
+ * 从后往前/从前往后比较两个内容身份，得到切换方向。
+ * 用于 Tab 这类**有限且已知顺序**的切换：order 是全部可选值，
+ * 新内容在列表里靠后就向右滑入。调用方把返回值交给 SwapIn 的 direction。
+ */
+export function useSwapDirection(current: string | number, order: readonly (string | number)[]) {
+  return useDirection(current, (prev, next) => {
+    const a = order.indexOf(prev);
+    const b = order.indexOf(next);
+    if (a === -1 || b === -1 || a === b) return 0;
+    return b > a ? 1 : -1;
+  });
+}
+
+/**
+ * 日期（或任何 ISO 字符串 / 单调递增 id）的切换方向。
+ * 序列是无限的，无法列成 order 数组，所以直接比字典序——
+ * ISO 日期（YYYY-MM-DD）的字典序就是时间序。
+ * 往后一天从右侧进，往前一天从左侧进。
+ */
+export function useSequenceDirection(current: string | number) {
+  return useDirection(current, (prev, next) => (prev === next ? 0 : next > prev ? 1 : -1));
+}
+
+/* ------------------------------------------------------------------ */
+/* 屏幕落位 · ScreenEnter                                                */
+/* ------------------------------------------------------------------ */
+/**
+ * 标签页根容器的入场：整页淡入 + 一点点上浮。
+ *
+ * Expo Router 的 Tabs 换页是瞬时挂载，不包一下就会“硬闪”。
+ * 幅度刻意做得很小（8pt / 0.24s）——换页是导航而不是内容揭示，
+ * 多出来的位移会让人误以为页面在跳动。
+ */
+export function ScreenEnter({
+  children,
+  style,
+}: {
+  children: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const reduceMotion = useReducedMotion();
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.set(withTiming(1, { duration: ms(mt.duration.base), easing: easeIos }));
+  }, [progress]);
+
+  const animated = useAnimatedStyle(() => {
+    const p = progress.get();
+    return {
+      opacity: interpolate(p, [0, 1], [0, 1], Extrapolation.CLAMP),
+      transform: [
+        { translateY: interpolate(p, [0, 1], [reduceMotion ? 0 : 8, 0], Extrapolation.CLAMP) },
+      ],
+    };
+  });
+
+  return <Animated.View style={[animated, { flex: 1 }, style]}>{children}</Animated.View>;
+}
+
+/**
+ * 给屏幕组件套上标签页根容器的入场。
+ * 三个标签页的 route 文件各自写一遍同样的包法只会产生三处重复；
+ * 用这个 HOC 把「换页也有交代」这件事收敛到一处。
+ *
+ *   export default withScreenEnter(ProfileScreen);
+ */
+export function withScreenEnter<P extends object>(Screen: ComponentType<P>) {
+  function ScreenEnterRoute(props: P) {
+    return (
+      <ScreenEnter>
+        <Screen {...props} />
+      </ScreenEnter>
+    );
+  }
+  ScreenEnterRoute.displayName = `withScreenEnter(${Screen.displayName ?? Screen.name ?? 'Screen'})`;
+  return ScreenEnterRoute;
+}
+
+/* ------------------------------------------------------------------ */
+/* 逐项落位 · StaggerItem                                               */
+/* ------------------------------------------------------------------ */
+/**
+ * 列表项的错峰入场。放在 map 里，index 决定延迟，封顶后不再累加延迟——
+ * 否则长列表的最后一项要等很久。
+ *
+ * 用法：
+ *   <StaggerItem index={i} count={list.length}>
+ *     <ListRow ... />
+ *   </StaggerItem>
+ */
+export function StaggerItem({
+  index,
+  step = mt.stagger.list,
+  cap = mt.stagger.listCap,
+  children,
+  style,
+}: {
+  index: number;
+  step?: number;
+  /** 参与错峰的最大项数 */
+  cap?: number;
+  /** 每一项都挂载时播放；换批时需要调用方用 key 重挂载 */
+  children: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const reduceMotion = useReducedMotion();
+  const progress = useSharedValue(reduceMotion ? 1 : 0);
+  const delay = Math.min(index, cap) * step;
+
+  useEffect(() => {
+    if (reduceMotion) {
+      progress.set(1);
+      return;
+    }
+    progress.set(0);
+    progress.set(
+      withDelay(ms(delay), withTiming(1, { duration: ms(mt.duration.base), easing: easeIos }))
+    );
+  }, [progress, delay, reduceMotion]);
+
+  const animated = useAnimatedStyle(() => {
+    const p = progress.get();
+    return {
+      opacity: interpolate(p, [0, 1], [0, 1], Extrapolation.CLAMP),
+      transform: [{ translateY: interpolate(p, [0, 1], [8, 0], Extrapolation.CLAMP) }],
+    };
+  });
+
+  return <Animated.View style={[animated, style]}>{children}</Animated.View>;
+}
+
+/* ------------------------------------------------------------------ */
+/* 骨架 → 内容 · CrossFade                                              */
+/* ------------------------------------------------------------------ */
+/**
+ * 骨架屏与真实内容之间的交底：骨架淡出、内容淡入，不让两者硬切。
+ * 加载态本身由调用方决定（loading ? <Skeleton/> : <Content/>），
+ * 这里只负责两层之间的过渡。
+ *
+ * 注意：骨架只给 exiting，不给 entering。
+ * 骨架多半是首帧就要看到的（冷启动就停在 loading），给它 entering 会先白一下
+ * 再淡入——那是多出来的一次「闪」，不是交底。真正需要过渡的只有两者之间那一次。
+ */
+export function CrossFade({
+  /** 当前显示的是不是骨架态 */
+  loading,
+  skeleton,
+  children,
+  duration = mt.duration.base,
+  style,
+}: {
+  loading: boolean;
+  skeleton: ReactNode;
+  children: ReactNode;
+  duration?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={style}>
+      {loading ? (
+        <Animated.View exiting={ReanimatedFadeOut.duration(ms(duration)).easing(easeIos)}>
+          {skeleton}
+        </Animated.View>
+      ) : (
+        <Animated.View entering={ReanimatedFadeIn.duration(ms(duration)).easing(easeIos)}>
+          {children}
+        </Animated.View>
+      )}
+    </View>
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -164,7 +440,7 @@ export function ScaleIn({
  * 按下去缩到 scale，抬手用 press 弹簧回弹。
  * 用法：把 animatedStyle 给 Animated.View，把两个 handler 给里面的 Pressable。
  */
-export function usePressFeedback(scale = 0.98) {
+export function usePressFeedback(scale: number = mt.pressScale.button) {
   const pressed = useSharedValue(0);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -182,9 +458,15 @@ export function usePressFeedback(scale = 0.98) {
   };
 }
 
+/**
+ * 按压反馈的缩放幅度很小（0.92 ～ 0.99），即便开了减弱动效也不至于让人不适。
+ * 这里不折叠它，否则整介面的可点感会消失。
+ * 默认值走 mt.pressScale.button，与 Button 同一档——不在这里写裸数字。
+ */
+
 export type PressableScaleProps = Omit<PressableProps, 'style' | 'children'> & {
   children: ReactNode;
-  /** 按下时的缩放比例 */
+  /** 按下时的缩放比例；默认按「常规按钮」档 */
   scale?: number;
   className?: string;
   style?: StyleProp<ViewStyle>;
@@ -193,7 +475,7 @@ export type PressableScaleProps = Omit<PressableProps, 'style' | 'children'> & {
 /** 带统一按压反馈的可点容器 */
 export function PressableScale({
   children,
-  scale = 0.98,
+  scale = mt.pressScale.button,
   className,
   style,
   disabled,
@@ -218,29 +500,41 @@ export function PressableScale({
 /* ------------------------------------------------------------------ */
 /* 进度绘制 · 完成环 / 计量条                                            */
 /* ------------------------------------------------------------------ */
-/** 0 → 1 的绘制进度，1100ms ease-ios，与 Web 的 strokeDashoffset 一致 */
+/**
+ * 0 → 1 的绘制进度，1100ms ease-ios，与 Web 的 strokeDashoffset 一致。
+ * 减弱动效时直接落到终值，不做扫过的过程。
+ */
 export function useDrawProgress(target: number, duration = mt.draw): SharedValue<number> {
-  const progress = useSharedValue(0);
+  const reduceMotion = useReducedMotion();
+  const progress = useSharedValue(reduceMotion ? target : 0);
 
   useEffect(() => {
+    if (reduceMotion) {
+      progress.set(target);
+      return;
+    }
     progress.set(withTiming(target, { duration: ms(duration), easing: easeIos }));
-  }, [progress, target, duration]);
+  }, [progress, target, duration, reduceMotion]);
 
   return progress;
 }
 
-/** 分段指示器位移：共享元素弹簧（480 / 38） */
-export function useSegmentIndicator(value: number, count: number, trackWidth: number) {
+/**
+ * 分段指示器位移：共享元素弹簧（480 / 38）。
+ *
+ * 一个容易错的地方：位移步长必须和指示器实际宽度一致。
+ * 指示器宽度是「轨道宽 - 两侧内边距」再平分，而轨道宽平分是另一回事；
+ * 拿轨道宽去算步长，后面的分段就会从头偏出去（每段偏 2×padding/N）。
+ * 所以这里直接吃已经算好的每段宽度，不再自己除一次。
+ */
+export function useSegmentIndicator(value: number, itemWidth: number) {
   const progress = useSharedValue(value);
 
   useEffect(() => {
     progress.set(withSpring(value, { ...mt.spring.segment, mass: mt.spring.segment.mass ?? 1 }));
-  }, [progress, value, count, trackWidth]);
+  }, [progress, value]);
 
-  return useAnimatedStyle(() => {
-    const item = trackWidth / Math.max(count, 1);
-    return { transform: [{ translateX: progress.get() * item }] };
-  });
+  return useAnimatedStyle(() => ({ transform: [{ translateX: progress.get() * itemWidth }] }));
 }
 
 /** 开关滑块位移：toggle 弹簧（560 / 36） */

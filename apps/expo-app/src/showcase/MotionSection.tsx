@@ -13,7 +13,7 @@ import {
   SlideIn,
   layoutTransition,
 } from '@/motion';
-import { color, elevationStyle, radius } from '@/theme';
+import { color, elevationStyle, motion as mt, radius } from '@/theme';
 
 import { ShowcaseStage } from './gallery';
 
@@ -82,7 +82,7 @@ export function MotionSection() {
           <View className="flex-row items-center justify-between gap-3">
             <Toggle checked={present} onChange={setPresent} label="出现与消失" tone="accent" />
             <PressableScale
-              scale={0.96}
+              scale={mt.pressScale.icon}
               onPress={() => setSeed((n) => n + 1)}
               className="border-lake/20 bg-card rounded-control min-h-11 justify-center border px-4">
               <Caption size="text-[11px]" tone="lake">

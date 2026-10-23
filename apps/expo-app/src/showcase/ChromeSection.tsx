@@ -12,7 +12,7 @@ import {
   SuccessOverlay,
   TabBar,
 } from '@/chrome';
-import { Button, Card, FieldRow, Icon, IconButton } from '@/components';
+import { Button, Card, FormRow, Icon, IconButton } from '@/components';
 import { Caption } from '@/components/text';
 import { tabItems } from '@/fixtures/showcase';
 
@@ -123,23 +123,23 @@ export function ChromeSection() {
             放弃并关闭
           </Button>
         }>
-        <Card padded={false} className="m-4">
-          <FieldRow label="菜名">
+        <View className="m-4 gap-2.5">
+          <FormRow label="菜名">
             <Caption size="text-body" tone="ink">
               番茄牛腩饭
             </Caption>
-          </FieldRow>
-          <FieldRow label="分类" hint="必填">
+          </FormRow>
+          <FormRow label="分类">
             <Caption size="text-body" tone="ink">
               家常菜
             </Caption>
-          </FieldRow>
-          <FieldRow label="时长">
+          </FormRow>
+          <FormRow label="时长">
             <Caption size="text-body" tone="ink">
               45 分钟
             </Caption>
-          </FieldRow>
-        </Card>
+          </FormRow>
+        </View>
       </FullScreenModal>
       <Sheet
         open={sheetOpen}
@@ -153,18 +153,18 @@ export function ChromeSection() {
           </Button>
         }>
         <View className="gap-3">
-          <Card padded={false}>
-            <FieldRow label="菜名">
+          <View className="gap-2.5">
+            <FormRow label="菜名">
               <Caption size="text-body" tone="ink">
                 番茄牛腩饭
               </Caption>
-            </FieldRow>
-            <FieldRow label="用时">
+            </FormRow>
+            <FormRow label="用时">
               <Caption size="text-body" tone="ink">
                 30 分钟
               </Caption>
-            </FieldRow>
-          </Card>
+            </FormRow>
+          </View>
           <Card className="py-3">
             <BottomSheetTextInput
               value={note}

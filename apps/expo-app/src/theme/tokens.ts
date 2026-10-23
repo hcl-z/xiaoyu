@@ -44,6 +44,12 @@ export const alpha = {
   hair70: 'rgba(229,229,234,0.7)',
   glassLight: 'rgba(249,249,251,0.78)',
   glassDark: 'rgba(28,28,30,0.32)',
+  /** 输入框占位文字：比 muted 再淡一档，不跟真实内容抢注意力 */
+  placeholder: 'rgba(99,99,102,0.7)',
+  /** 搜索框里的占位文字：底色更亮，再淡一点 */
+  placeholderSoft: 'rgba(99,99,102,0.8)',
+  /** 校验失败时的占位文字：与 danger 同色但淡一档 */
+  dangerPlaceholder: 'rgba(255,59,48,0.7)',
 } as const;
 
 export const colorGroups: {
@@ -418,7 +424,14 @@ export const motion = {
   /** 骨架屏呼吸周期（Web 用 Tailwind 默认的 animate-pulse 2s） */
   pulse: 2,
   /** 逐项入场错峰 */
-  stagger: { heatmap: 0.012, bars: 0.03 },
+  stagger: {
+    heatmap: 0.012,
+    bars: 0.03,
+    /** 列表内容换批时的逐项入场（秒 / 项） */
+    list: 0.035,
+    /** 逐项错峰的封顶项数：再长的列表不让最后一项等太久 */
+    listCap: 8,
+  },
   spring: {
     sheet: { damping: 34, stiffness: 340, mass: 1 },
     segment: { damping: 38, stiffness: 480, mass: 1 },
@@ -426,10 +439,34 @@ export const motion = {
     pop: { damping: 16, stiffness: 420, mass: 1 },
     press: { damping: 22, stiffness: 420, mass: 1 },
   },
+  /**
+   * 按压反馈的缩放幅度，按控件体量分档：
+   * 小到 44pt 的圆按钮缩 5% 才看得出，整行卡片缩 1% 就不至于反胃。
+   * 组件不得自写数字（特别是不能把大控件的比例套到小按钮上）。
+   */
+  pressScale: {
+    /** 成块的行 / 大卡片（ListRow、FeaturedCard） */
+    block: 0.99,
+    /** 常规按钮与分段 */
+    button: 0.97,
+    /** 圆形图标键与悬浮键 */
+    icon: 0.94,
+    /** 很密集的小控件（步进器、打卡格） */
+    chip: 0.92,
+  },
+  /**
+   * 选中时的"轻弹"幅度（tabbar 图标）。放在这里而不是组件里写死，
+   * 是为了让「选中态感到落地」这件事全仓只有一处定义。
+   */
+  selectPop: 1.08,
   uses: [
     { name: 'Push 进入', spec: 'x: 26 → 0 · 240ms · ease-ios', where: '菜谱库 → 详情 / 编辑' },
     { name: 'Push 退出', spec: 'x: 0 → -18 · 240ms', where: '返回上一层' },
-    { name: 'Tab 切换', spec: 'opacity 0 → 1 · 240ms', where: '今日 / 菜谱 / 我的' },
+    {
+      name: 'Tab 切换',
+      spec: 'opacity 0 → 1 · 240ms · 图标 pop 1.08',
+      where: '今日 / 菜谱 / 我的',
+    },
     { name: 'Sheet 上推', spec: 'y: 100% → 0 · spring(340/34)', where: '打卡弹层' },
     { name: 'Alert 弹出', spec: 'scale .86 → 1 · spring(420/16)', where: '删除确认' },
     { name: '成功对勾', spec: 'scale .4 → 1 · spring(420/16)', where: '保存成功态' },

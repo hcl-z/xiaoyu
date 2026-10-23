@@ -35,7 +35,6 @@ import { motion as mt } from '@/theme';
 
 import { Alert, SuccessOverlay } from './overlays';
 import { PhotoCheckinModal } from './photo-checkin';
-import { simulateSaveOutcome } from './save-outcome';
 import { Sheet } from './sheet';
 
 type OpenOpts = { recipe?: string | null; day?: string; existing?: Checkin };
@@ -108,7 +107,11 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState('');
   const [photoSaved, setPhotoSaved] = useState(false);
-  const [photoFailed, setPhotoFailed] = useState(false);
+  /**
+   * 失败态不再单独存一份状态：它只由真实错误触发，
+   * 所以直接从「有错误文案」派生，避免两个状态互相打架。
+   */
+  const photoFailed = photoError !== '';
 
   const openPhotoCheckin = useCallback(
     (opts?: PhotoOpts) => {
@@ -118,7 +121,6 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
       setPhotoError('');
       setPhotoBusy(false);
       setPhotoSaved(false);
-      setPhotoFailed(false);
       setPhotoOpen(true);
     },
     [today]
@@ -145,19 +147,8 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
     setPhotoBusy(true);
     setPhotoError('');
 
-    // UI 阶段：随机演练失败态；接入真实保存后换成接口返回值
-    if (simulateSaveOutcome() === 'failure') {
-      // 失败态自己就是反馈，按钮不再同时转圈
-      setPhotoBusy(false);
-      setPhotoFailed(true);
-      setTimeout(() => {
-        setPhotoFailed(false);
-      }, 1400);
-      return;
-    }
-
     try {
-      const photoId = await uploadPhoto(photo);
+      const photoId = await uploadPhoto(photo, 'checkin.jpg');
       setPhotoSaved(true);
       await addCheckin({
         day: photoDay,
@@ -237,18 +228,8 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
   const save = useCallback(() => {
     if (!canSave || phase !== 'idle') return;
     setPhase('saving');
-    setTimeout(() => {
-      // UI 阶段：随机演练失败态；接入真实保存后换成接口返回值
-      if (simulateSaveOutcome() === 'failure') {
-        setPhase('failure');
-        setResult({ tone: 'failure', title: '保存失败', caption: '网络不太稳，再试一次' });
-        setTimeout(() => {
-          setResult(null);
-          setPhase('idle');
-        }, 1400);
-        return;
-      }
-      void (async () => {
+    void (async () => {
+      try {
         if (existing) {
           await patchCheckin(
             existing.id,
@@ -282,8 +263,20 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
           setPhase('idle');
           setResult(null);
         }, 900);
-      })();
-    }, 700);
+      } catch (e) {
+        // 失败态现在只由真实错误触发，不再靠随机数演练
+        setPhase('failure');
+        setResult({
+          tone: 'failure',
+          title: '保存失败',
+          caption: e instanceof Error ? e.message : '网络不太稳，再试一次',
+        });
+        setTimeout(() => {
+          setResult(null);
+          setPhase('idle');
+        }, 1600);
+      }
+    })();
   }, [
     addCheckin,
     canSave,
@@ -444,7 +437,7 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
                 accessibilityRole="button"
                 accessibilityLabel="重新选择菜谱"
                 onPress={() => setSlug(null)}
-                className="active:bg-tint/70 w-full px-4 py-2.5">
+                className="active:bg-fill/60 w-full px-4 py-2.5">
                 <Body tone="accent">重新选择</Body>
               </Pressable>
             </Section>

@@ -10,7 +10,7 @@ import { Button } from '@/components/button';
 import { Section } from '@/components/surfaces';
 import { Icon } from '@/components/icon';
 import { Body, Caption } from '@/components/text';
-import { FieldRow, TextField } from '@/components/inputs';
+import { FormGroup, TextField } from '@/components/inputs';
 import { useSession } from '@/session';
 
 import { AuthScaffold } from './scaffold';
@@ -106,38 +106,30 @@ export function LoginScreen() {
         )
       }>
       {personal ? (
-        <Section>
-          <FieldRow label="邮箱" align="left">
-            <TextField
-              value={email}
-              onChange={(v) => {
-                setEmail(v);
-                if (error) setError('');
-              }}
-              align="left"
-              placeholder="name@example.com"
-              inputMode="email"
-              label="邮箱"
-              editable={!busy}
-              className="flex-1"
-            />
-          </FieldRow>
-          <FieldRow label="密码" align="left">
-            <TextField
-              value={password}
-              onChange={(v) => {
-                setPassword(v);
-                if (error) setError('');
-              }}
-              align="left"
-              placeholder="输入密码"
-              label="密码"
-              secure
-              editable={!busy}
-              className="flex-1"
-            />
-          </FieldRow>
-        </Section>
+        <FormGroup>
+          <TextField
+            value={email}
+            onChange={(v) => {
+              setEmail(v);
+              if (error) setError('');
+            }}
+            placeholder="name@example.com"
+            inputMode="email"
+            label="邮箱"
+            editable={!busy}
+          />
+          <TextField
+            value={password}
+            onChange={(v) => {
+              setPassword(v);
+              if (error) setError('');
+            }}
+            placeholder="输入密码"
+            label="密码"
+            secure
+            editable={!busy}
+          />
+        </FormGroup>
       ) : (
         <Section>
           <View className="flex-row items-center gap-3 px-4 py-4">

@@ -4,7 +4,6 @@
  */
 import { useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
-import Animated from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -20,7 +19,7 @@ import { Body, Caption, Micro, Title } from '@/components/text';
 import { resolveImageUrl } from '@/data/client';
 import { useRecipeHistory, useRecipes } from '@/data/store';
 import { dayLabel, relativeDayLabel, todayISO } from '@/domain/date';
-import { useFadeSwap } from '@/motion';
+import { SwapIn, useSwapDirection } from '@/motion';
 
 type Tab = 'ing' | 'step' | 'log';
 
@@ -62,7 +61,9 @@ export function RecipeDetailScreen() {
     else router.replace('/recipes');
   };
 
-  const tabStyle = useFadeSwap(tab);
+  /** 三个分段的先后顺序：换 Tab 时新内容从手势方向滑入 */
+  const tabOrder = useMemo(() => ['ing', 'step', 'log'] as const, []);
+  const tabDirection = useSwapDirection(tab, tabOrder);
 
   if (loading && !recipe) {
     return (
@@ -202,7 +203,8 @@ export function RecipeDetailScreen() {
             ]}
           />
 
-          <Animated.View style={[tabStyle, { rowGap: 20 }]}>
+          {/* 换 Tab：新面板从手势方向滑入，而不是原地重绘 */}
+          <SwapIn swapKey={tab} direction={tabDirection} style={{ rowGap: 20 }}>
             {tab === 'ing' ? (
               <View style={{ rowGap: 20 }}>
                 {recipe.ingredients.map((group, gi) => {
@@ -368,7 +370,7 @@ export function RecipeDetailScreen() {
                 )}
               </View>
             )}
-          </Animated.View>
+          </SwapIn>
 
           {tab === 'ing' && flat.length > 0 ? (
             <Caption className="text-center">

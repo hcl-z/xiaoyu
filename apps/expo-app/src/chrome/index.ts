@@ -10,3 +10,5 @@ export * from './overlays';
 export * from './sheet';
 export * from './checkin';
 export * from './photo-checkin';
+export * from './cover-field';
+export * from './action-sheet';

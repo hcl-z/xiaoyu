@@ -18,6 +18,7 @@ import { resolveImageUrl } from '@/data/client';
 import { useRecipes, useTaxonomies } from '@/data/store';
 import type { Recipe } from '@/data/types';
 import { relativeDayLabel } from '@/domain/date';
+import { CrossFade, SwapIn } from '@/motion';
 import { elevationStyle } from '@/theme';
 
 import { useTabScreenPadding } from './layout-metrics';
@@ -57,6 +58,12 @@ export function RecipesScreen() {
   const browsing = !query.trim() && activeCat === '全部';
   const featured = browsing ? list[0] : undefined;
   const rows = browsing ? list.slice(1) : list;
+
+  /**
+   * 结果集的身份：筛选条件一变就算换了一批内容，列表要重新「落位」。
+   * 带上长度，这样同一条件下增删菜谱（比如刚收藏了一本）也会重播错峰。
+   */
+  const resultKey = `${activeCat}\u0000${query.trim()}\u0000${list.length}`;
 
   return (
     <ScrollView
@@ -100,103 +107,113 @@ export function RecipesScreen() {
       </View>
 
       <View className="mt-5">
-        {loading ? (
-          <View className="px-5" style={{ rowGap: 20 }}>
-            <Skeleton className="h-44 w-full" rounded={18} />
-            <Section>
-              {[0, 1, 2].map((i) => (
-                <View key={i} className="flex-row items-center gap-3 px-4 py-3">
-                  <Skeleton className="h-12 w-12" rounded={14} />
-                  <View className="flex-1" style={{ rowGap: 6 }}>
-                    <Skeleton className="h-3.5 w-28" rounded={4} />
-                    <Skeleton className="h-2.5 w-40" rounded={4} />
+        <CrossFade
+          loading={loading}
+          skeleton={
+            <View className="px-5" style={{ rowGap: 20 }}>
+              <Skeleton className="h-44 w-full" rounded={18} />
+              <Section>
+                {[0, 1, 2].map((i) => (
+                  <View key={i} className="flex-row items-center gap-3 px-4 py-3">
+                    <Skeleton className="h-12 w-12" rounded={14} />
+                    <View className="flex-1" style={{ rowGap: 6 }}>
+                      <Skeleton className="h-3.5 w-28" rounded={4} />
+                      <Skeleton className="h-2.5 w-40" rounded={4} />
+                    </View>
                   </View>
-                </View>
-              ))}
-            </Section>
-          </View>
-        ) : list.length === 0 ? (
-          <View className="px-5">
-            <Section>
-              <EmptyState
-                icon={<Icon name="search" size="xl" tone="accent" />}
-                title="没有匹配的菜谱"
-                description={
-                  query.trim()
-                    ? `没有找到与「${query.trim()}」相关的菜谱，菜名、标签与食材都试过了。`
-                    : activeCat === '收藏'
-                      ? '还没有收藏任何菜谱。'
-                      : '这个分类下还是空的。'
-                }
-                action={
-                  <View className="flex-row gap-2">
-                    {query.trim() || activeCat !== '全部' ? (
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel="清除筛选"
-                        onPress={() => {
-                          setQuery('');
-                          setCat('全部');
-                        }}
-                        className="bg-fill active:bg-fill-deep rounded-control h-8 flex-row items-center px-3">
-                        <Body size="text-[13px]" weight="font-semibold">
-                          清除筛选
-                        </Body>
-                      </Pressable>
-                    ) : null}
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="新建菜谱"
-                      onPress={() => router.push('/recipes/new')}
-                      className="bg-indigo active:bg-indigo-deep rounded-control h-8 flex-row items-center px-3">
-                      <Body size="text-[13px]" weight="font-semibold" tone="invert">
-                        新建菜谱
-                      </Body>
-                    </Pressable>
-                  </View>
-                }
-              />
-            </Section>
-          </View>
-        ) : (
-          <View style={{ rowGap: 20 }}>
-            {featured ? (
-              <View className="px-5">
-                <FeaturedCard
-                  recipe={featured}
-                  onPress={() => router.push(`/recipes/${featured.slug}`)}
-                />
-              </View>
-            ) : null}
-
-            <View className="px-5">
-              <Section
-                title={browsing ? '全部菜谱' : activeCat === '全部' ? '搜索结果' : activeCat}
-                footer={`共 ${list.length} 道`}>
-                {rows.map((r) => (
-                  <ListRow
-                    key={r.slug}
-                    onPress={() => router.push(`/recipes/${r.slug}`)}
-                    leading={<RecipeThumb recipe={r} size={48} />}
-                    title={
-                      <View className="flex-row items-center gap-1.5">
-                        <Body numberOfLines={1} className="shrink">
-                          {r.title}
-                        </Body>
-                        {r.favorite ? (
-                          <Icon name="heart" size="sm" tone="accent" fill="current" />
-                        ) : null}
-                      </View>
-                    }
-                    subtitle={`${r.category} · ${r.minutes} 分钟 · ${relativeDayLabel(r.lastCookedOn)}`}
-                    value={r.cooked ? `${r.cooked} 次` : '未做'}
-                    accessory="chevron"
-                  />
                 ))}
               </Section>
             </View>
-          </View>
-        )}
+          }>
+          {list.length === 0 ? (
+            <SwapIn swapKey={resultKey}>
+              <View className="px-5">
+                <Section>
+                  <EmptyState
+                    icon={<Icon name="search" size="xl" tone="accent" />}
+                    title="没有匹配的菜谱"
+                    description={
+                      query.trim()
+                        ? `没有找到与「${query.trim()}」相关的菜谱，菜名、标签与食材都试过了。`
+                        : activeCat === '收藏'
+                          ? '还没有收藏任何菜谱。'
+                          : '这个分类下还是空的。'
+                    }
+                    action={
+                      <View className="flex-row gap-2">
+                        {query.trim() || activeCat !== '全部' ? (
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel="清除筛选"
+                            onPress={() => {
+                              setQuery('');
+                              setCat('全部');
+                            }}
+                            className="bg-fill active:bg-fill-deep rounded-control h-8 flex-row items-center px-3">
+                            <Body size="text-[13px]" weight="font-semibold">
+                              清除筛选
+                            </Body>
+                          </Pressable>
+                        ) : null}
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="新建菜谱"
+                          onPress={() => router.push('/recipes/new')}
+                          className="bg-indigo active:bg-indigo-deep rounded-control h-8 flex-row items-center px-3">
+                          <Body size="text-[13px]" weight="font-semibold" tone="invert">
+                            新建菜谱
+                          </Body>
+                        </Pressable>
+                      </View>
+                    }
+                  />
+                </Section>
+              </View>
+            </SwapIn>
+          ) : (
+            <SwapIn swapKey={resultKey}>
+              <View style={{ rowGap: 20 }}>
+                {featured ? (
+                  <View className="px-5">
+                    <FeaturedCard
+                      recipe={featured}
+                      onPress={() => router.push(`/recipes/${featured.slug}`)}
+                    />
+                  </View>
+                ) : null}
+
+                <View className="px-5">
+                  <Section
+                    title={browsing ? '全部菜谱' : activeCat === '全部' ? '搜索结果' : activeCat}
+                    footer={`共 ${list.length} 道`}>
+                    {rows.map((r, i) => (
+                      <ListRow
+                        key={r.slug}
+                        staggerIndex={featured ? i + 1 : i}
+                        staggerKey={resultKey}
+                        onPress={() => router.push(`/recipes/${r.slug}`)}
+                        leading={<RecipeThumb recipe={r} size={48} />}
+                        title={
+                          <View className="flex-row items-center gap-1.5">
+                            <Body numberOfLines={1} className="shrink">
+                              {r.title}
+                            </Body>
+                            {r.favorite ? (
+                              <Icon name="heart" size="sm" tone="accent" fill="current" />
+                            ) : null}
+                          </View>
+                        }
+                        subtitle={`${r.category} · ${r.minutes} 分钟 · ${relativeDayLabel(r.lastCookedOn)}`}
+                        value={r.cooked ? `${r.cooked} 次` : '未做'}
+                        accessory="chevron"
+                      />
+                    ))}
+                  </Section>
+                </View>
+              </View>
+            </SwapIn>
+          )}
+        </CrossFade>
       </View>
     </ScrollView>
   );

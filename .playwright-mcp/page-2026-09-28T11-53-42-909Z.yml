@@ -1,0 +1,1004 @@
+- generic [ref=f5e2]:
+  - region "Skip to main content":
+    - link "Skip to main content" [ref=f5e3] [cursor=pointer]:
+      - /url: "#__docusaurus_skipToContent_fallback"
+  - navigation "Main" [ref=f5e4]:
+    - generic [ref=f5e5]:
+      - generic [ref=f5e6]:
+        - button "Toggle navigation bar" [ref=f5e7] [cursor=pointer]
+        - link "React Native Bottom Sheet React Native Bottom Sheet" [ref=f5e10] [cursor=pointer]:
+          - /url: /react-native-bottom-sheet/
+          - img "React Native Bottom Sheet" [ref=f5e12]
+          - generic [ref=f5e13]: React Native Bottom Sheet
+      - button "Search (Command+K)" [ref=f5e15] [cursor=pointer]
+  - main [ref=f5e22]:
+    - generic [ref=f5e26]:
+      - article [ref=f5e27]:
+        - navigation "Breadcrumbs" [ref=f5e28]:
+          - list [ref=f5e29]:
+            - listitem [ref=f5e30]:
+              - link "Home page" [ref=f5e31] [cursor=pointer]:
+                - /url: /react-native-bottom-sheet/
+            - listitem [ref=f5e34]:
+              - link "Bottom Sheet" [ref=f5e35] [cursor=pointer]:
+                - /url: /react-native-bottom-sheet/
+            - listitem [ref=f5e36]:
+              - generic [ref=f5e37]: Props
+        - generic [ref=f5e38]: "Version: v5"
+        - button "On this page" [ref=f5e40] [cursor=pointer]
+        - generic [ref=f5e41]:
+          - heading "Props" [level=1] [ref=f5e43]
+          - heading [level=2] [ref=f5e44]:
+            - text: Configuration
+            - link "Direct link to Configuration" [ref=f5e45] [cursor=pointer]:
+              - /url: "#configuration"
+              - text: "#"
+          - heading [level=3] [ref=f5e46]:
+            - text: index
+            - link "Direct link to index" [ref=f5e47] [cursor=pointer]:
+              - /url: "#index"
+              - text: "#"
+          - paragraph [ref=f5e48]:
+            - text: Initial snap index. You also could provide
+            - code [ref=f5e49]: "-1"
+            - text: to initiate bottom sheet in closed state.
+          - table [ref=f5e50]:
+            - rowgroup [ref=f5e51]:
+              - row [ref=f5e52]:
+                - columnheader "type" [ref=f5e53]
+                - columnheader "default" [ref=f5e54]
+                - columnheader "required" [ref=f5e55]
+            - rowgroup [ref=f5e56]:
+              - row [ref=f5e57]:
+                - cell "number" [ref=f5e58]
+                - cell "0" [ref=f5e59]
+                - cell "NO" [ref=f5e60]
+          - heading [level=3] [ref=f5e61]:
+            - text: snapPoints
+            - link "Direct link to snapPoints" [ref=f5e62] [cursor=pointer]:
+              - /url: "#snappoints"
+              - text: "#"
+          - paragraph [ref=f5e63]:
+            - text: Points for the bottom sheet to snap to,
+            - strong [ref=f5e64]: points should be sorted from bottom to top
+            - text: . It accepts array of number, string or mix.
+          - table [ref=f5e65]:
+            - rowgroup [ref=f5e66]:
+              - row [ref=f5e67]:
+                - columnheader "type" [ref=f5e68]
+                - columnheader "required" [ref=f5e69]
+            - rowgroup [ref=f5e70]:
+              - row [ref=f5e71]:
+                - cell "Array<number|string> | SharedValue<Array<string | number>>" [ref=f5e72]
+                - cell "YES*" [ref=f5e73]
+          - generic [ref=f5e74]:
+            - generic [ref=f5e75]: caution
+            - paragraph [ref=f5e80]:
+              - text: This prop is required if you set
+              - code [ref=f5e81]: enableDynamicSizing
+              - text: to
+              - code [ref=f5e82]: "false"
+              - text: (it's
+              - code [ref=f5e83]: "true"
+              - text: by default).
+          - generic [ref=f5e84]:
+            - generic [ref=f5e85]: caution
+            - paragraph [ref=f5e90]: String values should be a percentage.
+          - heading [level=4] [ref=f5e91]:
+            - text: examples
+            - link "Direct link to examples" [ref=f5e92] [cursor=pointer]:
+              - /url: "#examples"
+              - text: "#"
+          - generic [ref=f5e94]:
+            - code [ref=f5e96]:
+              - generic [ref=f5e97]: "snapPoints={[200, 500]}"
+              - generic [ref=f5e98]: "snapPoints={[200, '50%']}"
+              - generic [ref=f5e99]: "snapPoints={['100%']}"
+            - button "Copy code to clipboard" [ref=f5e101] [cursor=pointer]
+          - heading [level=3] [ref=f5e107]:
+            - text: overDragResistanceFactor
+            - link "Direct link to overDragResistanceFactor" [ref=f5e108] [cursor=pointer]:
+              - /url: "#overdragresistancefactor"
+              - text: "#"
+          - paragraph [ref=f5e109]: Defines how violently sheet has to be stopped while over dragging.
+          - table [ref=f5e110]:
+            - rowgroup [ref=f5e111]:
+              - row [ref=f5e112]:
+                - columnheader "type" [ref=f5e113]
+                - columnheader "default" [ref=f5e114]
+                - columnheader "required" [ref=f5e115]
+            - rowgroup [ref=f5e116]:
+              - row [ref=f5e117]:
+                - cell "number" [ref=f5e118]
+                - cell "2.5" [ref=f5e119]
+                - cell "NO" [ref=f5e120]
+          - heading [level=3] [ref=f5e121]:
+            - text: detached
+            - link "Direct link to detached" [ref=f5e122] [cursor=pointer]:
+              - /url: "#detached"
+              - text: "#"
+          - paragraph [ref=f5e123]: Defines whether the bottom sheet is attached to the bottom or no.
+          - table [ref=f5e124]:
+            - rowgroup [ref=f5e125]:
+              - row [ref=f5e126]:
+                - columnheader "type" [ref=f5e127]
+                - columnheader "default" [ref=f5e128]
+                - columnheader "required" [ref=f5e129]
+            - rowgroup [ref=f5e130]:
+              - row [ref=f5e131]:
+                - cell "boolean" [ref=f5e132]
+                - cell "false" [ref=f5e133]
+                - cell "NO" [ref=f5e134]
+          - heading [level=3] [ref=f5e135]:
+            - text: enableContentPanningGesture
+            - link "Direct link to enableContentPanningGesture" [ref=f5e136] [cursor=pointer]:
+              - /url: "#enablecontentpanninggesture"
+              - text: "#"
+          - paragraph [ref=f5e137]: Enable content panning gesture interaction.
+          - table [ref=f5e138]:
+            - rowgroup [ref=f5e139]:
+              - row [ref=f5e140]:
+                - columnheader "type" [ref=f5e141]
+                - columnheader "default" [ref=f5e142]
+                - columnheader "required" [ref=f5e143]
+            - rowgroup [ref=f5e144]:
+              - row [ref=f5e145]:
+                - cell "boolean" [ref=f5e146]
+                - cell "true" [ref=f5e147]
+                - cell "NO" [ref=f5e148]
+          - heading [level=3] [ref=f5e149]:
+            - text: enableHandlePanningGesture
+            - link "Direct link to enableHandlePanningGesture" [ref=f5e150] [cursor=pointer]:
+              - /url: "#enablehandlepanninggesture"
+              - text: "#"
+          - paragraph [ref=f5e151]: Enable handle panning gesture interaction.
+          - table [ref=f5e152]:
+            - rowgroup [ref=f5e153]:
+              - row [ref=f5e154]:
+                - columnheader "type" [ref=f5e155]
+                - columnheader "default" [ref=f5e156]
+                - columnheader "required" [ref=f5e157]
+            - rowgroup [ref=f5e158]:
+              - row [ref=f5e159]:
+                - cell "boolean" [ref=f5e160]
+                - cell "true" [ref=f5e161]
+                - cell "NO" [ref=f5e162]
+          - heading [level=3] [ref=f5e163]:
+            - text: enableOverDrag
+            - link "Direct link to enableOverDrag" [ref=f5e164] [cursor=pointer]:
+              - /url: "#enableoverdrag"
+              - text: "#"
+          - paragraph [ref=f5e165]: Enable over drag for the sheet.
+          - table [ref=f5e166]:
+            - rowgroup [ref=f5e167]:
+              - row [ref=f5e168]:
+                - columnheader "type" [ref=f5e169]
+                - columnheader "default" [ref=f5e170]
+                - columnheader "required" [ref=f5e171]
+            - rowgroup [ref=f5e172]:
+              - row [ref=f5e173]:
+                - cell "boolean" [ref=f5e174]
+                - cell "true" [ref=f5e175]
+                - cell "NO" [ref=f5e176]
+          - heading [level=3] [ref=f5e177]:
+            - text: enablePanDownToClose
+            - link "Direct link to enablePanDownToClose" [ref=f5e178] [cursor=pointer]:
+              - /url: "#enablepandowntoclose"
+              - text: "#"
+          - paragraph [ref=f5e179]: Enable pan down gesture to close the sheet.
+          - table [ref=f5e180]:
+            - rowgroup [ref=f5e181]:
+              - row [ref=f5e182]:
+                - columnheader "type" [ref=f5e183]
+                - columnheader "default" [ref=f5e184]
+                - columnheader "required" [ref=f5e185]
+            - rowgroup [ref=f5e186]:
+              - row [ref=f5e187]:
+                - cell "boolean" [ref=f5e188]
+                - cell "false" [ref=f5e189]
+                - cell "NO" [ref=f5e190]
+          - heading [level=3] [ref=f5e191]:
+            - text: enableDynamicSizing
+            - link "Direct link to enableDynamicSizing" [ref=f5e192] [cursor=pointer]:
+              - /url: "#enabledynamicsizing"
+              - text: "#"
+          - paragraph [ref=f5e193]: Enable dynamic sizing for content view and scrollable content size.
+          - table [ref=f5e194]:
+            - rowgroup [ref=f5e195]:
+              - row [ref=f5e196]:
+                - columnheader "type" [ref=f5e197]
+                - columnheader "default" [ref=f5e198]
+                - columnheader "required" [ref=f5e199]
+            - rowgroup [ref=f5e200]:
+              - row [ref=f5e201]:
+                - cell "boolean" [ref=f5e202]
+                - cell "true" [ref=f5e203]
+                - cell "NO" [ref=f5e204]
+          - generic [ref=f5e205]:
+            - generic [ref=f5e206]: caution
+            - paragraph [ref=f5e211]:
+              - text: Setting this prop to
+              - code [ref=f5e212]: "true"
+              - text: ", will result in adding a new snap point to the provided snap points and will be sorted accordingly, and this might effect the indexing, for example, if provided snap points are"
+              - code [ref=f5e213]: "[100, 1000]"
+              - text: ", and the content size is"
+              - code [ref=f5e214]: "500"
+              - text: then the final snap points will be
+              - code [ref=f5e215]: "[100, 500, 1000]"
+              - text: .
+          - heading [level=3] [ref=f5e216]:
+            - text: animateOnMount
+            - link "Direct link to animateOnMount" [ref=f5e217] [cursor=pointer]:
+              - /url: "#animateonmount"
+              - text: "#"
+          - paragraph [ref=f5e218]: This will initially mount the sheet closed and when it's mounted and calculated the layout, it will snap to initial snap point index.
+          - table [ref=f5e219]:
+            - rowgroup [ref=f5e220]:
+              - row [ref=f5e221]:
+                - columnheader "type" [ref=f5e222]
+                - columnheader "default" [ref=f5e223]
+                - columnheader "required" [ref=f5e224]
+            - rowgroup [ref=f5e225]:
+              - row [ref=f5e226]:
+                - cell "boolean" [ref=f5e227]
+                - cell "true" [ref=f5e228]
+                - cell "NO" [ref=f5e229]
+          - heading [level=3] [ref=f5e230]:
+            - text: overrideReduceMotion
+            - link "Direct link to overrideReduceMotion" [ref=f5e231] [cursor=pointer]:
+              - /url: "#overridereducemotion"
+              - text: "#"
+          - paragraph [ref=f5e232]:
+            - text: To override the user reduce motion accessibility setting,
+            - link "read more" [ref=f5e233] [cursor=pointer]:
+              - /url: https://docs.swmansion.com/react-native-reanimated/docs/guides/accessibility
+            - text: .
+          - list [ref=f5e234]:
+            - listitem [ref=f5e235]:
+              - code [ref=f5e236]: ReduceMotion.System
+              - text: ": if the"
+              - code [ref=f5e237]: Reduce motion
+              - text: accessibility setting is enabled on the device, disable the animation.
+            - listitem [ref=f5e238]:
+              - code [ref=f5e239]: ReduceMotion.Always
+              - text: ": disable the animation, even if"
+              - code [ref=f5e240]: Reduce motion
+              - text: accessibility setting is not enabled.
+            - listitem [ref=f5e241]:
+              - code [ref=f5e242]: ReduceMotion.Never
+              - text: ": enable the animation, even if"
+              - code [ref=f5e243]: Reduce motion
+              - text: accessibility setting is enabled.
+          - table [ref=f5e244]:
+            - rowgroup [ref=f5e245]:
+              - row [ref=f5e246]:
+                - columnheader "type" [ref=f5e247]
+                - columnheader "default" [ref=f5e248]
+                - columnheader "required" [ref=f5e249]
+            - rowgroup [ref=f5e250]:
+              - row [ref=f5e251]:
+                - cell "ReduceMotion" [ref=f5e252]
+                - cell "ReduceMotion.System" [ref=f5e253]
+                - cell "NO" [ref=f5e254]
+          - heading [level=2] [ref=f5e255]:
+            - text: Styles
+            - link "Direct link to Styles" [ref=f5e256] [cursor=pointer]:
+              - /url: "#styles"
+              - text: "#"
+          - heading [level=3] [ref=f5e257]:
+            - text: style
+            - link "Direct link to style" [ref=f5e258] [cursor=pointer]:
+              - /url: "#style"
+              - text: "#"
+          - paragraph [ref=f5e259]:
+            - text: View style to be applied at the sheet container, it also could be an
+            - code [ref=f5e260]: AnimatedStyle
+            - text: . This is helpful to add shadow to the sheet.
+          - table [ref=f5e261]:
+            - rowgroup [ref=f5e262]:
+              - row [ref=f5e263]:
+                - columnheader "type" [ref=f5e264]
+                - columnheader "default" [ref=f5e265]
+                - columnheader "required" [ref=f5e266]
+            - rowgroup [ref=f5e267]:
+              - row [ref=f5e268]:
+                - cell "ViewStyle | AnimatedStyle" [ref=f5e269]
+                - cell "undefined" [ref=f5e270]
+                - cell "NO" [ref=f5e271]
+          - heading [level=3] [ref=f5e272]:
+            - text: backgroundStyle
+            - link "Direct link to backgroundStyle" [ref=f5e273] [cursor=pointer]:
+              - /url: "#backgroundstyle"
+              - text: "#"
+          - paragraph [ref=f5e274]: View style to be applied to the background component.
+          - table [ref=f5e275]:
+            - rowgroup [ref=f5e276]:
+              - row [ref=f5e277]:
+                - columnheader "type" [ref=f5e278]
+                - columnheader "default" [ref=f5e279]
+                - columnheader "required" [ref=f5e280]
+            - rowgroup [ref=f5e281]:
+              - row [ref=f5e282]:
+                - cell "ViewStyle" [ref=f5e283]
+                - cell "undefined" [ref=f5e284]
+                - cell "NO" [ref=f5e285]
+          - heading [level=3] [ref=f5e286]:
+            - text: handleStyle
+            - link "Direct link to handleStyle" [ref=f5e287] [cursor=pointer]:
+              - /url: "#handlestyle"
+              - text: "#"
+          - paragraph [ref=f5e288]: View style to be applied to the handle component.
+          - table [ref=f5e289]:
+            - rowgroup [ref=f5e290]:
+              - row [ref=f5e291]:
+                - columnheader "type" [ref=f5e292]
+                - columnheader "default" [ref=f5e293]
+                - columnheader "required" [ref=f5e294]
+            - rowgroup [ref=f5e295]:
+              - row [ref=f5e296]:
+                - cell "ViewStyle" [ref=f5e297]
+                - cell "undefined" [ref=f5e298]
+                - cell "NO" [ref=f5e299]
+          - heading [level=3] [ref=f5e300]:
+            - text: handleIndicatorStyle
+            - link "Direct link to handleIndicatorStyle" [ref=f5e301] [cursor=pointer]:
+              - /url: "#handleindicatorstyle"
+              - text: "#"
+          - paragraph [ref=f5e302]: View style to be applied to the handle indicator component.
+          - table [ref=f5e303]:
+            - rowgroup [ref=f5e304]:
+              - row [ref=f5e305]:
+                - columnheader "type" [ref=f5e306]
+                - columnheader "default" [ref=f5e307]
+                - columnheader "required" [ref=f5e308]
+            - rowgroup [ref=f5e309]:
+              - row [ref=f5e310]:
+                - cell "ViewStyle" [ref=f5e311]
+                - cell "undefined" [ref=f5e312]
+                - cell "NO" [ref=f5e313]
+          - heading [level=2] [ref=f5e314]:
+            - text: Layout Configuration
+            - link "Direct link to Layout Configuration" [ref=f5e315] [cursor=pointer]:
+              - /url: "#layout-configuration"
+              - text: "#"
+          - heading [level=3] [ref=f5e316]:
+            - text: handleHeight
+            - link "Direct link to handleHeight" [ref=f5e317] [cursor=pointer]:
+              - /url: "#handleheight"
+              - text: "#"
+          - paragraph [ref=f5e318]:
+            - text: Handle height helps to calculate the internal container and sheet layouts. If
+            - code [ref=f5e319]: handleComponent
+            - text: is provided, the library internally will calculate its layout, unless
+            - code [ref=f5e320]: handleHeight
+            - text: is provided too.
+          - table [ref=f5e321]:
+            - rowgroup [ref=f5e322]:
+              - row [ref=f5e323]:
+                - columnheader "type" [ref=f5e324]
+                - columnheader "default" [ref=f5e325]
+                - columnheader "required" [ref=f5e326]
+            - rowgroup [ref=f5e327]:
+              - row [ref=f5e328]:
+                - cell "number" [ref=f5e329]
+                - cell "24" [ref=f5e330]
+                - cell "NO" [ref=f5e331]
+          - heading [level=3] [ref=f5e332]:
+            - text: containerHeight
+            - link "Direct link to containerHeight" [ref=f5e333] [cursor=pointer]:
+              - /url: "#containerheight"
+              - text: "#"
+          - paragraph [ref=f5e334]:
+            - text: Container height helps to calculate the internal sheet layouts. If
+            - code [ref=f5e335]: containerHeight
+            - text: not provided, the library internally will calculate it, however this will cause an extra re-rendering.
+          - table [ref=f5e336]:
+            - rowgroup [ref=f5e337]:
+              - row [ref=f5e338]:
+                - columnheader "type" [ref=f5e339]
+                - columnheader "default" [ref=f5e340]
+                - columnheader "required" [ref=f5e341]
+            - rowgroup [ref=f5e342]:
+              - row [ref=f5e343]:
+                - cell "number" [ref=f5e344]
+                - cell "0" [ref=f5e345]
+                - cell "NO" [ref=f5e346]
+          - heading [level=3] [ref=f5e347]:
+            - text: contentHeight
+            - link "Direct link to contentHeight" [ref=f5e348] [cursor=pointer]:
+              - /url: "#contentheight"
+              - text: "#"
+          - paragraph [ref=f5e349]: Content height helps dynamic snap points calculation.
+          - table [ref=f5e350]:
+            - rowgroup [ref=f5e351]:
+              - row [ref=f5e352]:
+                - columnheader "type" [ref=f5e353]
+                - columnheader "default" [ref=f5e354]
+                - columnheader "required" [ref=f5e355]
+            - rowgroup [ref=f5e356]:
+              - row [ref=f5e357]:
+                - cell "number | Animated.SharedValue<number>" [ref=f5e358]
+                - cell "undefined" [ref=f5e359]
+                - cell "NO" [ref=f5e360]
+          - heading [level=3] [ref=f5e361]:
+            - text: containerOffset
+            - link "Direct link to containerOffset" [ref=f5e362] [cursor=pointer]:
+              - /url: "#containeroffset"
+              - text: "#"
+          - paragraph [ref=f5e363]: Container offset helps to accurately detect container offsets.
+          - table [ref=f5e364]:
+            - rowgroup [ref=f5e365]:
+              - row [ref=f5e366]:
+                - columnheader "type" [ref=f5e367]
+                - columnheader "default" [ref=f5e368]
+                - columnheader "required" [ref=f5e369]
+            - rowgroup [ref=f5e370]:
+              - row [ref=f5e371]:
+                - cell "Animated.SharedValue<Insets>" [ref=f5e372]
+                - cell "undefined" [ref=f5e373]
+                - cell "NO" [ref=f5e374]
+          - heading [level=3] [ref=f5e375]:
+            - text: topInset
+            - link "Direct link to topInset" [ref=f5e376] [cursor=pointer]:
+              - /url: "#topinset"
+              - text: "#"
+          - paragraph [ref=f5e377]:
+            - text: Top inset to be added to the bottom sheet container, usually it comes from
+            - code [ref=f5e378]: "@react-navigation/stack"
+            - text: hook
+            - code [ref=f5e379]: useHeaderHeight
+            - text: or from
+            - code [ref=f5e380]: react-native-safe-area-context
+            - text: hook
+            - code [ref=f5e381]: useSafeArea
+            - text: .
+          - table [ref=f5e382]:
+            - rowgroup [ref=f5e383]:
+              - row [ref=f5e384]:
+                - columnheader "type" [ref=f5e385]
+                - columnheader "default" [ref=f5e386]
+                - columnheader "required" [ref=f5e387]
+            - rowgroup [ref=f5e388]:
+              - row [ref=f5e389]:
+                - cell "number" [ref=f5e390]
+                - cell "0" [ref=f5e391]
+                - cell "NO" [ref=f5e392]
+          - heading [level=3] [ref=f5e393]:
+            - text: bottomInset
+            - link "Direct link to bottomInset" [ref=f5e394] [cursor=pointer]:
+              - /url: "#bottominset"
+              - text: "#"
+          - paragraph [ref=f5e395]: Bottom inset to be added to the bottom sheet container.
+          - table [ref=f5e396]:
+            - rowgroup [ref=f5e397]:
+              - row [ref=f5e398]:
+                - columnheader "type" [ref=f5e399]
+                - columnheader "default" [ref=f5e400]
+                - columnheader "required" [ref=f5e401]
+            - rowgroup [ref=f5e402]:
+              - row [ref=f5e403]:
+                - cell "number" [ref=f5e404]
+                - cell "0" [ref=f5e405]
+                - cell "NO" [ref=f5e406]
+          - heading [level=3] [ref=f5e407]:
+            - text: maxDynamicContentSize
+            - link "Direct link to maxDynamicContentSize" [ref=f5e408] [cursor=pointer]:
+              - /url: "#maxdynamiccontentsize"
+              - text: "#"
+          - paragraph [ref=f5e409]: Max dynamic content size height to limit the bottom sheet height from exceeding a provided size.
+          - table [ref=f5e410]:
+            - rowgroup [ref=f5e411]:
+              - row [ref=f5e412]:
+                - columnheader "type" [ref=f5e413]
+                - columnheader "default" [ref=f5e414]
+                - columnheader "required" [ref=f5e415]
+            - rowgroup [ref=f5e416]:
+              - row [ref=f5e417]:
+                - cell "number" [ref=f5e418]
+                - cell "container height" [ref=f5e419]
+                - cell "NO" [ref=f5e420]
+          - heading [level=2] [ref=f5e421]:
+            - text: Keyboard Configuration
+            - link "Direct link to Keyboard Configuration" [ref=f5e422] [cursor=pointer]:
+              - /url: "#keyboard-configuration"
+              - text: "#"
+          - heading [level=3] [ref=f5e423]:
+            - text: keyboardBehavior
+            - link "Direct link to keyboardBehavior" [ref=f5e424] [cursor=pointer]:
+              - /url: "#keyboardbehavior"
+              - text: "#"
+          - paragraph [ref=f5e425]: Defines the keyboard appearance behavior.
+          - list [ref=f5e426]:
+            - listitem [ref=f5e427]:
+              - code [ref=f5e428]: extend
+              - text: ": extend the sheet to its maximum snap point."
+            - listitem [ref=f5e429]:
+              - code [ref=f5e430]: fillParent
+              - text: ": extend the sheet to fill the parent view."
+            - listitem [ref=f5e431]:
+              - code [ref=f5e432]: interactive
+              - text: ": offset the sheet by the size of the keyboard."
+          - table [ref=f5e433]:
+            - rowgroup [ref=f5e434]:
+              - row [ref=f5e435]:
+                - columnheader "type" [ref=f5e436]
+                - columnheader "default" [ref=f5e437]
+                - columnheader "required" [ref=f5e438]
+            - rowgroup [ref=f5e439]:
+              - row [ref=f5e440]:
+                - cell "'extend' | 'fillParent' | 'interactive'" [ref=f5e441]
+                - cell "'interactive'" [ref=f5e442]
+                - cell "NO" [ref=f5e443]
+          - heading [level=3] [ref=f5e444]:
+            - text: keyboardBlurBehavior
+            - link "Direct link to keyboardBlurBehavior" [ref=f5e445] [cursor=pointer]:
+              - /url: "#keyboardblurbehavior"
+              - text: "#"
+          - paragraph [ref=f5e446]: Defines the keyboard blur behavior.
+          - list [ref=f5e447]:
+            - listitem [ref=f5e448]:
+              - code [ref=f5e449]: none
+              - text: ": do nothing."
+            - listitem [ref=f5e450]:
+              - code [ref=f5e451]: restore
+              - text: ": restore sheet position."
+          - table [ref=f5e452]:
+            - rowgroup [ref=f5e453]:
+              - row [ref=f5e454]:
+                - columnheader "type" [ref=f5e455]
+                - columnheader "default" [ref=f5e456]
+                - columnheader "required" [ref=f5e457]
+            - rowgroup [ref=f5e458]:
+              - row [ref=f5e459]:
+                - cell "'none' | 'restore'" [ref=f5e460]
+                - cell "'none'" [ref=f5e461]
+                - cell "NO" [ref=f5e462]
+          - heading [level=3] [ref=f5e463]:
+            - text: enableBlurKeyboardOnGesture
+            - link "Direct link to enableBlurKeyboardOnGesture" [ref=f5e464] [cursor=pointer]:
+              - /url: "#enableblurkeyboardongesture"
+              - text: "#"
+          - paragraph [ref=f5e465]: Enable blurring the keyboard when user start to drag the bottom sheet.
+          - table [ref=f5e466]:
+            - rowgroup [ref=f5e467]:
+              - row [ref=f5e468]:
+                - columnheader "type" [ref=f5e469]
+                - columnheader "default" [ref=f5e470]
+                - columnheader "required" [ref=f5e471]
+            - rowgroup [ref=f5e472]:
+              - row [ref=f5e473]:
+                - cell "boolean" [ref=f5e474]
+                - cell "false" [ref=f5e475]
+                - cell "NO" [ref=f5e476]
+          - heading [level=3] [ref=f5e477]:
+            - text: android_keyboardInputMode
+            - link "Direct link to android_keyboardInputMode" [ref=f5e478] [cursor=pointer]:
+              - /url: "#android_keyboardinputmode"
+              - text: "#"
+          - paragraph [ref=f5e479]:
+            - text: Defines keyboard input mode for
+            - code [ref=f5e480]: Android
+            - text: only,
+            - link "learn more" [ref=f5e481] [cursor=pointer]:
+              - /url: https://developer.android.com/guide/topics/manifest/activity-element#wsoft
+            - text: .
+          - table [ref=f5e482]:
+            - rowgroup [ref=f5e483]:
+              - row [ref=f5e484]:
+                - columnheader "type" [ref=f5e485]
+                - columnheader "default" [ref=f5e486]
+                - columnheader "required" [ref=f5e487]
+            - rowgroup [ref=f5e488]:
+              - row [ref=f5e489]:
+                - cell "'adjustPan' | 'adjustResize'" [ref=f5e490]
+                - cell "'adjustPan'" [ref=f5e491]
+                - cell "NO" [ref=f5e492]
+          - heading [level=2] [ref=f5e493]:
+            - text: Animation Configuration
+            - link "Direct link to Animation Configuration" [ref=f5e494] [cursor=pointer]:
+              - /url: "#animation-configuration"
+              - text: "#"
+          - heading [level=3] [ref=f5e495]:
+            - text: animationConfigs
+            - link "Direct link to animationConfigs" [ref=f5e496] [cursor=pointer]:
+              - /url: "#animationconfigs"
+              - text: "#"
+          - paragraph [ref=f5e497]: "Animation configs, this could be created by:"
+          - list [ref=f5e498]:
+            - listitem [ref=f5e499]:
+              - link [ref=f5e500] [cursor=pointer]:
+                - /url: /react-native-bottom-sheet/hooks#usebottomsheetspringconfigs
+                - code [ref=f5e501]: useBottomSheetSpringConfigs
+            - listitem [ref=f5e502]:
+              - link [ref=f5e503] [cursor=pointer]:
+                - /url: /react-native-bottom-sheet/hooks#usebottomsheettimingconfigs
+                - code [ref=f5e504]: useBottomSheetTimingConfigs
+          - generic [ref=f5e506]:
+            - code [ref=f5e508]:
+              - generic [ref=f5e509]: type animationConfigs = (
+              - generic [ref=f5e510]: "point: number,"
+              - generic [ref=f5e511]: "velocity: number,"
+              - generic [ref=f5e512]: "callback: () => void"
+              - generic [ref=f5e513]: ) => number;
+            - button "Copy code to clipboard" [ref=f5e515] [cursor=pointer]
+          - table [ref=f5e521]:
+            - rowgroup [ref=f5e522]:
+              - row [ref=f5e523]:
+                - columnheader "type" [ref=f5e524]
+                - columnheader "default" [ref=f5e525]
+                - columnheader "required" [ref=f5e526]
+            - rowgroup [ref=f5e527]:
+              - row [ref=f5e528]:
+                - cell "function" [ref=f5e529]
+                - cell "undefined" [ref=f5e530]
+                - cell "NO" [ref=f5e531]
+          - heading [level=2] [ref=f5e532]:
+            - text: Gesture Configuration
+            - link "Direct link to Gesture Configuration" [ref=f5e533] [cursor=pointer]:
+              - /url: "#gesture-configuration"
+              - text: "#"
+          - heading [level=3] [ref=f5e534]:
+            - text: waitFor
+            - link "Direct link to waitFor" [ref=f5e535] [cursor=pointer]:
+              - /url: "#waitfor"
+              - text: "#"
+          - paragraph [ref=f5e536]:
+            - link [ref=f5e537] [cursor=pointer]:
+              - /url: https://docs.swmansion.com/react-native-gesture-handler/docs/handler-common#waitfor
+              - text: Read about
+              - code [ref=f5e538]: waitFor
+            - text: .
+          - table [ref=f5e539]:
+            - rowgroup [ref=f5e540]:
+              - row [ref=f5e541]:
+                - columnheader "type" [ref=f5e542]
+                - columnheader "default" [ref=f5e543]
+                - columnheader "required" [ref=f5e544]
+            - rowgroup [ref=f5e545]:
+              - row [ref=f5e546]:
+                - cell "React.Ref | React.Ref[]" [ref=f5e547]
+                - cell "[]" [ref=f5e548]
+                - cell "NO" [ref=f5e549]
+          - heading [level=3] [ref=f5e550]:
+            - text: simultaneousHandlers
+            - link "Direct link to simultaneousHandlers" [ref=f5e551] [cursor=pointer]:
+              - /url: "#simultaneoushandlers"
+              - text: "#"
+          - paragraph [ref=f5e552]:
+            - link [ref=f5e553] [cursor=pointer]:
+              - /url: https://docs.swmansion.com/react-native-gesture-handler/docs/handler-common#simultaneoushandlers
+              - text: Read about
+              - code [ref=f5e554]: simultaneousHandlers
+            - text: .
+          - table [ref=f5e555]:
+            - rowgroup [ref=f5e556]:
+              - row [ref=f5e557]:
+                - columnheader "type" [ref=f5e558]
+                - columnheader "default" [ref=f5e559]
+                - columnheader "required" [ref=f5e560]
+            - rowgroup [ref=f5e561]:
+              - row [ref=f5e562]:
+                - cell "React.Ref | React.Ref[]" [ref=f5e563]
+                - cell "[]" [ref=f5e564]
+                - cell "NO" [ref=f5e565]
+          - heading [level=3] [ref=f5e566]:
+            - text: activeOffsetX
+            - link "Direct link to activeOffsetX" [ref=f5e567] [cursor=pointer]:
+              - /url: "#activeoffsetx"
+              - text: "#"
+          - paragraph [ref=f5e568]:
+            - link [ref=f5e569] [cursor=pointer]:
+              - /url: https://docs.swmansion.com/react-native-gesture-handler/docs/handler-pan#activeoffsetx
+              - text: Read about
+              - code [ref=f5e570]: activeOffsetX
+            - text: .
+          - table [ref=f5e571]:
+            - rowgroup [ref=f5e572]:
+              - row [ref=f5e573]:
+                - columnheader "type" [ref=f5e574]
+                - columnheader "default" [ref=f5e575]
+                - columnheader "required" [ref=f5e576]
+            - rowgroup [ref=f5e577]:
+              - row [ref=f5e578]:
+                - cell "number[]" [ref=f5e579]
+                - cell "undefined" [ref=f5e580]
+                - cell "NO" [ref=f5e581]
+          - heading [level=3] [ref=f5e582]:
+            - text: activeOffsetY
+            - link "Direct link to activeOffsetY" [ref=f5e583] [cursor=pointer]:
+              - /url: "#activeoffsety"
+              - text: "#"
+          - paragraph [ref=f5e584]:
+            - link [ref=f5e585] [cursor=pointer]:
+              - /url: https://docs.swmansion.com/react-native-gesture-handler/docs/handler-pan#activeoffsety
+              - text: Read about
+              - code [ref=f5e586]: activeOffsetY
+            - text: .
+          - table [ref=f5e587]:
+            - rowgroup [ref=f5e588]:
+              - row [ref=f5e589]:
+                - columnheader "type" [ref=f5e590]
+                - columnheader "default" [ref=f5e591]
+                - columnheader "required" [ref=f5e592]
+            - rowgroup [ref=f5e593]:
+              - row [ref=f5e594]:
+                - cell "number[]" [ref=f5e595]
+                - cell "undefined" [ref=f5e596]
+                - cell "NO" [ref=f5e597]
+          - heading [level=3] [ref=f5e598]:
+            - text: failOffsetX
+            - link "Direct link to failOffsetX" [ref=f5e599] [cursor=pointer]:
+              - /url: "#failoffsetx"
+              - text: "#"
+          - paragraph [ref=f5e600]:
+            - link [ref=f5e601] [cursor=pointer]:
+              - /url: https://docs.swmansion.com/react-native-gesture-handler/docs/handler-pan/#failoffsetx
+              - text: Read about
+              - code [ref=f5e602]: failOffsetX
+            - text: .
+          - table [ref=f5e603]:
+            - rowgroup [ref=f5e604]:
+              - row [ref=f5e605]:
+                - columnheader "type" [ref=f5e606]
+                - columnheader "default" [ref=f5e607]
+                - columnheader "required" [ref=f5e608]
+            - rowgroup [ref=f5e609]:
+              - row [ref=f5e610]:
+                - cell "number[]" [ref=f5e611]
+                - cell "undefined" [ref=f5e612]
+                - cell "NO" [ref=f5e613]
+          - heading [level=3] [ref=f5e614]:
+            - text: failOffsetY
+            - link "Direct link to failOffsetY" [ref=f5e615] [cursor=pointer]:
+              - /url: "#failoffsety"
+              - text: "#"
+          - paragraph [ref=f5e616]:
+            - link [ref=f5e617] [cursor=pointer]:
+              - /url: https://docs.swmansion.com/react-native-gesture-handler/docs/handler-pan/#failoffsety
+              - text: Read about
+              - code [ref=f5e618]: failOffsetY
+            - text: .
+          - table [ref=f5e619]:
+            - rowgroup [ref=f5e620]:
+              - row [ref=f5e621]:
+                - columnheader "type" [ref=f5e622]
+                - columnheader "default" [ref=f5e623]
+                - columnheader "required" [ref=f5e624]
+            - rowgroup [ref=f5e625]:
+              - row [ref=f5e626]:
+                - cell "number[]" [ref=f5e627]
+                - cell "undefined" [ref=f5e628]
+                - cell "NO" [ref=f5e629]
+          - heading [level=3] [ref=f5e630]:
+            - text: gestureEventsHandlersHook
+            - link "Direct link to gestureEventsHandlersHook" [ref=f5e631] [cursor=pointer]:
+              - /url: "#gestureeventshandlershook"
+              - text: "#"
+          - paragraph [ref=f5e632]: Custom hook to provide pan gesture events handler, which will allow advance and customize handling for pan gesture.
+          - table [ref=f5e633]:
+            - rowgroup [ref=f5e634]:
+              - row [ref=f5e635]:
+                - columnheader "type" [ref=f5e636]
+                - columnheader "default" [ref=f5e637]
+                - columnheader "required" [ref=f5e638]
+            - rowgroup [ref=f5e639]:
+              - row [ref=f5e640]:
+                - cell "GestureEventsHandlersHookType" [ref=f5e641]
+                - cell "useGestureEventsHandlersDefault" [ref=f5e642]
+                - cell "NO" [ref=f5e643]
+          - blockquote [ref=f5e644]:
+            - paragraph [ref=f5e645]: "warning: this is an experimental feature and the hook signature can change without a major version bump."
+          - heading [level=2] [ref=f5e646]:
+            - text: Animated Nodes
+            - link "Direct link to Animated Nodes" [ref=f5e647] [cursor=pointer]:
+              - /url: "#animated-nodes"
+              - text: "#"
+          - heading [level=3] [ref=f5e648]:
+            - text: animatedIndex
+            - link "Direct link to animatedIndex" [ref=f5e649] [cursor=pointer]:
+              - /url: "#animatedindex"
+              - text: "#"
+          - paragraph [ref=f5e650]: Animated value to be used as a callback for the index node internally.
+          - table [ref=f5e651]:
+            - rowgroup [ref=f5e652]:
+              - row [ref=f5e653]:
+                - columnheader "type" [ref=f5e654]
+                - columnheader "default" [ref=f5e655]
+                - columnheader "required" [ref=f5e656]
+            - rowgroup [ref=f5e657]:
+              - row [ref=f5e658]:
+                - cell "Animated.SharedValue<number>" [ref=f5e659]
+                - cell "null" [ref=f5e660]
+                - cell "NO" [ref=f5e661]
+          - heading [level=3] [ref=f5e662]:
+            - text: animatedPosition
+            - link "Direct link to animatedPosition" [ref=f5e663] [cursor=pointer]:
+              - /url: "#animatedposition"
+              - text: "#"
+          - paragraph [ref=f5e664]: Animated value to be used as a callback for the position node internally.
+          - table [ref=f5e665]:
+            - rowgroup [ref=f5e666]:
+              - row [ref=f5e667]:
+                - columnheader "type" [ref=f5e668]
+                - columnheader "default" [ref=f5e669]
+                - columnheader "required" [ref=f5e670]
+            - rowgroup [ref=f5e671]:
+              - row [ref=f5e672]:
+                - cell "Animated.SharedValue<number>" [ref=f5e673]
+                - cell "null" [ref=f5e674]
+                - cell "NO" [ref=f5e675]
+          - heading [level=2] [ref=f5e676]:
+            - text: Callbacks
+            - link "Direct link to Callbacks" [ref=f5e677] [cursor=pointer]:
+              - /url: "#callbacks"
+              - text: "#"
+          - heading [level=3] [ref=f5e678]:
+            - text: onChange
+            - link "Direct link to onChange" [ref=f5e679] [cursor=pointer]:
+              - /url: "#onchange"
+              - text: "#"
+          - paragraph [ref=f5e680]: Callback when the sheet position changed.
+          - generic [ref=f5e682]:
+            - code [ref=f5e684]:
+              - generic [ref=f5e685]: "type onChange = (index: number) => void;"
+            - button "Copy code to clipboard" [ref=f5e687] [cursor=pointer]
+          - table [ref=f5e693]:
+            - rowgroup [ref=f5e694]:
+              - row [ref=f5e695]:
+                - columnheader "type" [ref=f5e696]
+                - columnheader "default" [ref=f5e697]
+                - columnheader "required" [ref=f5e698]
+            - rowgroup [ref=f5e699]:
+              - row [ref=f5e700]:
+                - cell "function" [ref=f5e701]
+                - cell "null" [ref=f5e702]
+                - cell "NO" [ref=f5e703]
+          - heading [level=3] [ref=f5e704]:
+            - text: onAnimate
+            - link "Direct link to onAnimate" [ref=f5e705] [cursor=pointer]:
+              - /url: "#onanimate"
+              - text: "#"
+          - paragraph [ref=f5e706]: Callback when the sheet about to animate to a new position.
+          - generic [ref=f5e708]:
+            - code [ref=f5e710]:
+              - generic [ref=f5e711]: "type onAnimate = (fromIndex: number, toIndex: number, fromPosition: number, toPosition: number) => void;"
+            - button "Copy code to clipboard" [ref=f5e713] [cursor=pointer]
+          - table [ref=f5e719]:
+            - rowgroup [ref=f5e720]:
+              - row [ref=f5e721]:
+                - columnheader "type" [ref=f5e722]
+                - columnheader "default" [ref=f5e723]
+                - columnheader "required" [ref=f5e724]
+            - rowgroup [ref=f5e725]:
+              - row [ref=f5e726]:
+                - cell "function" [ref=f5e727]
+                - cell "null" [ref=f5e728]
+                - cell "NO" [ref=f5e729]
+          - heading [level=2] [ref=f5e730]:
+            - text: Components
+            - link "Direct link to Components" [ref=f5e731] [cursor=pointer]:
+              - /url: "#components"
+              - text: "#"
+          - heading [level=3] [ref=f5e732]:
+            - text: handleComponent
+            - link "Direct link to handleComponent" [ref=f5e733] [cursor=pointer]:
+              - /url: "#handlecomponent"
+              - text: "#"
+          - paragraph [ref=f5e734]: Component to be placed as a sheet handle.
+          - table [ref=f5e735]:
+            - rowgroup [ref=f5e736]:
+              - row [ref=f5e737]:
+                - columnheader "type" [ref=f5e738]
+                - columnheader "default" [ref=f5e739]
+                - columnheader "required" [ref=f5e740]
+            - rowgroup [ref=f5e741]:
+              - row [ref=f5e742]:
+                - cell [ref=f5e743]:
+                  - code [ref=f5e744]: React.FC\<BottomSheetHandleProps>
+                - cell [ref=f5e745]:
+                  - code [ref=f5e746]: BottomSheetHandle
+                - cell "NO" [ref=f5e747]
+          - heading [level=3] [ref=f5e748]:
+            - text: backdropComponent
+            - link "Direct link to backdropComponent" [ref=f5e749] [cursor=pointer]:
+              - /url: "#backdropcomponent"
+              - text: "#"
+          - paragraph [ref=f5e750]:
+            - text: Component to be placed as a sheet backdrop, by default is set to
+            - code [ref=f5e751]: "null"
+            - text: ", however the library also provide a default implementation"
+            - code [ref=f5e752]: BottomSheetBackdrop
+            - text: of a backdrop but you will need to provide it manually.
+          - table [ref=f5e753]:
+            - rowgroup [ref=f5e754]:
+              - row [ref=f5e755]:
+                - columnheader "type" [ref=f5e756]
+                - columnheader "default" [ref=f5e757]
+                - columnheader "required" [ref=f5e758]
+            - rowgroup [ref=f5e759]:
+              - row [ref=f5e760]:
+                - cell [ref=f5e761]:
+                  - code [ref=f5e762]: React.FC\<BottomSheetBackgroundProps>
+                - cell "null" [ref=f5e763]
+                - cell "NO" [ref=f5e764]
+          - heading [level=3] [ref=f5e765]:
+            - text: backgroundComponent
+            - link "Direct link to backgroundComponent" [ref=f5e766] [cursor=pointer]:
+              - /url: "#backgroundcomponent"
+              - text: "#"
+          - paragraph [ref=f5e767]: Component to be placed as a sheet background.
+          - table [ref=f5e768]:
+            - rowgroup [ref=f5e769]:
+              - row [ref=f5e770]:
+                - columnheader "type" [ref=f5e771]
+                - columnheader "default" [ref=f5e772]
+                - columnheader "required" [ref=f5e773]
+            - rowgroup [ref=f5e774]:
+              - row [ref=f5e775]:
+                - cell [ref=f5e776]:
+                  - code [ref=f5e777]: React.FC\<BottomSheetBackgroundProps>
+                - cell [ref=f5e778]:
+                  - code [ref=f5e779]: BottomSheetBackground
+                - cell "NO" [ref=f5e780]
+          - heading [level=3] [ref=f5e781]:
+            - text: footerComponent
+            - link "Direct link to footerComponent" [ref=f5e782] [cursor=pointer]:
+              - /url: "#footercomponent"
+              - text: "#"
+          - paragraph [ref=f5e783]: Component to be placed as a sheet footer.
+          - table [ref=f5e784]:
+            - rowgroup [ref=f5e785]:
+              - row [ref=f5e786]:
+                - columnheader "type" [ref=f5e787]
+                - columnheader "default" [ref=f5e788]
+                - columnheader "required" [ref=f5e789]
+            - rowgroup [ref=f5e790]:
+              - row [ref=f5e791]:
+                - cell [ref=f5e792]:
+                  - code [ref=f5e793]: React.FC\<BottomSheetFooterProps>
+                - cell "undefined" [ref=f5e794]
+                - cell "NO" [ref=f5e795]
+          - heading [level=3] [ref=f5e796]:
+            - text: children
+            - link "Direct link to children" [ref=f5e797] [cursor=pointer]:
+              - /url: "#children"
+              - text: "#"
+          - paragraph [ref=f5e798]:
+            - code [ref=f5e799]: Scrollable
+            - text: node or react node to be places as a sheet content.
+          - table [ref=f5e800]:
+            - rowgroup [ref=f5e801]:
+              - row [ref=f5e802]:
+                - columnheader "type" [ref=f5e803]
+                - columnheader "default" [ref=f5e804]
+                - columnheader "required" [ref=f5e805]
+            - rowgroup [ref=f5e806]:
+              - row [ref=f5e807]:
+                - cell "() => React.ReactNode | React.ReactNode[] | React.ReactNode" [ref=f5e808]
+                - cell "null" [ref=f5e809]
+                - cell "YES" [ref=f5e810]
+        - link "Edit this page" [ref=f5e814] [cursor=pointer]:
+          - /url: https://github.com/gorhom/react-native-bottom-sheet/tree/master/website/docs/docs/props.md
+      - navigation "Docs pages" [ref=f5e818]:
+        - link "Previous « Usage" [ref=f5e819] [cursor=pointer]:
+          - /url: /react-native-bottom-sheet/usage
+          - generic [ref=f5e820]: Previous
+          - generic [ref=f5e821]: « Usage
+        - link "Next Methods »" [ref=f5e822] [cursor=pointer]:
+          - /url: /react-native-bottom-sheet/methods
+          - generic [ref=f5e823]: Next
+          - generic [ref=f5e824]: Methods »
+  - contentinfo [ref=f5e826]:
+    - generic [ref=f5e828]:
+      - generic [ref=f5e829]:
+        - text: Open Source by
+        - link "Mo Gorhom" [ref=f5e830] [cursor=pointer]:
+          - /url: https://gorhom.dev/
+        - text: .
+      - separator [ref=f5e831]
+      - generic [ref=f5e833]:
+        - link "Github" [ref=f5e834] [cursor=pointer]:
+          - /url: https://github.com/gorhom
+        - text: ·
+        - link "X (Twitter)" [ref=f5e835] [cursor=pointer]:
+          - /url: https://twitter.com/gorhom
