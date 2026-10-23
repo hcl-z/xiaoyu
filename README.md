@@ -46,7 +46,7 @@ pnpm --filter @recipe/web db:migrate    # 应用到 Supabase
 
 1. 在 `CHANGELOG.md` 写好该版本的 `## [X.Y.Z]` 小节，需要时升 `version` 并提交推送；
 2. 手动触发 Actions 里的 **Release phone app** 工作流（`gh workflow run
-   release-mobile.yml --ref <分支>`），它创建 `mobile-vX.Y.Z` 的 draft release，
+   release-app.yml --ref <分支>`），它创建 `mobile-vX.Y.Z` 的 draft release，
    在 Ubuntu 上构建签名 APK、在 macOS 上构建免签名 ipa，并上传到 draft；
 3. 检查无误后发布（发布即打 tag）：
 
