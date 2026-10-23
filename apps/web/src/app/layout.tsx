@@ -12,14 +12,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="zh-CN">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&family=Noto+Sans+SC:wght@400;500;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+      {/*
+        字体走系统栈（globals.css @theme 已按 Apple → Inter → PingFang/Noto 排好），
+        不再外链 Google Fonts：一是国内加载不可靠，二是 SF Pro/PingFang 本就是设计目标。
+      */}
       <body className="min-h-screen bg-paper text-ink antialiased">{children}</body>
     </html>
   );

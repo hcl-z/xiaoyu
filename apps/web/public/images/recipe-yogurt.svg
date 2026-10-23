@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="莓果酸奶碗">
+  <!-- 氛围底：晨光粉调 -->
+  <rect width="800" height="600" fill="#F6E9EF"/>
+  <circle cx="400" cy="322" r="236" fill="#FAEFF3"/>
+  <circle cx="668" cy="452" r="44" fill="#F1E1E9"/>
+  <circle cx="118" cy="172" r="30" fill="#F1E1E9"/>
+
+  <!-- 背景点缀：散落莓果与燕麦 -->
+  <circle cx="150" cy="270" r="12" fill="#5A6FB5"/>
+  <circle cx="150" cy="270" r="5" fill="#7A8DC9"/>
+  <path d="M636 300 q10 -14 26 -12 q-2 16 -16 20 Z" fill="#E05A6B"/>
+  <ellipse cx="668" cy="336" rx="7" ry="4" fill="#D9B98C" transform="rotate(-18 668 336)"/>
+
+  <!-- 碗投影 -->
+  <ellipse cx="400" cy="514" rx="176" ry="23" fill="#6B3A46" opacity="0.11"/>
+
+  <!-- 厚壁酸奶碗 -->
+  <path d="M192 294 C202 402 288 486 400 486 C512 486 598 402 608 294 Z" fill="#FFFFFF"/>
+  <path d="M192 294 C202 402 288 486 400 486 C426 486 452 482 476 476 C390 464 316 412 302 294 Z" fill="#F5EFF1"/>
+  <path d="M346 484 h108 a10 10 0 0 1 10 12 l-4 14 h-124 l-4 -14 a10 10 0 0 1 10 -12 Z" fill="#EDE4E8"/>
+  <path d="M214 312 C232 372 288 424 354 446" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" opacity="0.95"/>
+
+  <!-- 碗口：唇沿（白）→ 内壁（暖灰） -->
+  <ellipse cx="400" cy="294" rx="208" ry="42" fill="#FFFFFF"/>
+  <ellipse cx="400" cy="294" rx="192" ry="35" fill="#EDE4E8"/>
+
+  <!-- 酸奶底 -->
+  <ellipse cx="400" cy="292" rx="178" ry="33" fill="#FFF9F2"/>
+  <!-- 旋抹纹理 -->
+  <path d="M262 292 q40 -18 90 -12 q58 6 104 -8 q44 -10 80 8" fill="none" stroke="#FBEFE2" stroke-width="8" stroke-linecap="round"/>
+  <ellipse cx="374" cy="286" rx="82" ry="12" fill="#FFFDF9"/>
+
+  <!-- 莓果沿右侧排开（草莓 · 蓝莓 · 树莓） -->
+  <!-- 草莓两颗 -->
+  <g transform="translate(452 268) rotate(-12)">
+    <path d="M0 -20 C14 -20 22 -8 18 6 C15 17 7 24 0 26 C-7 24 -15 17 -18 6 C-22 -8 -14 -20 0 -20 Z" fill="#E05A6B"/>
+    <path d="M-14 -18 l-4 -8 8 3 M0 -21 l0 -9 5 7 M13 -17 l5 -8 2 9" stroke="#8FB06A" stroke-width="4.4" stroke-linecap="round" fill="none"/>
+    <g stroke="#F08A96" stroke-width="3" stroke-linecap="round">
+      <path d="M-8 -6 l0 6"/>
+      <path d="M4 -9 l0 6"/>
+      <path d="M-2 4 l0 6"/>
+      <path d="M9 0 l0 6"/>
+    </g>
+  </g>
+  <g transform="translate(500 292) rotate(16)">
+    <path d="M0 -16 C11 -16 18 -6 15 5 C12 14 6 19 0 21 C-6 19 -12 14 -15 5 C-18 -6 -11 -16 0 -16 Z" fill="#C74452"/>
+    <path d="M-11 -14 l-3 -6 6 2 M0 -17 l0 -7 4 5 M10 -13 l4 -6 1 7" stroke="#8FB06A" stroke-width="3.6" stroke-linecap="round" fill="none"/>
+  </g>
+  <!-- 蓝莓 -->
+  <g>
+    <circle cx="404" cy="252" r="13" fill="#5A6FB5"/>
+    <path d="M397 245 l4 -6 4 6" stroke="#8FA2D6" stroke-width="3.4" stroke-linecap="round" fill="none"/>
+    <circle cx="430" cy="236" r="10" fill="#4C5F9E"/>
+    <path d="M425 231 l3 -5 3 5" stroke="#8FA2D6" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <circle cx="376" cy="240" r="9" fill="#5A6FB5"/>
+    <path d="M372 236 l2 -4 2 4" stroke="#8FA2D6" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+    <circle cx="532" cy="270" r="9" fill="#4C5F9E"/>
+  </g>
+  <!-- 树莓 -->
+  <g fill="#D1435F">
+    <circle cx="346" cy="262" r="7"/>
+    <circle cx="358" cy="256" r="7"/>
+    <circle cx="350" cy="248" r="6.4"/>
+    <circle cx="338" cy="250" r="5.6"/>
+  </g>
+  <circle cx="352" cy="254" r="2.6" fill="#E97B91"/>
+  <!-- 燕麦片撒落 -->
+  <g fill="#D9B98C">
+    <ellipse cx="322" cy="286" rx="8" ry="4.4" transform="rotate(-14 322 286)"/>
+    <ellipse cx="360" cy="296" rx="7" ry="4" transform="rotate(20 360 296)"/>
+    <ellipse cx="406" cy="288" rx="7.4" ry="4" transform="rotate(-8 406 288)"/>
+    <ellipse cx="560" cy="292" rx="6.6" ry="3.6" transform="rotate(16 560 292)"/>
+  </g>
+  <!-- 蜂蜜流线 -->
+  <path d="M448 234 q-10 20 -2 38" fill="none" stroke="#E8A94E" stroke-width="7" stroke-linecap="round" opacity="0.92"/>
+  <ellipse cx="445" cy="276" rx="10" ry="5.4" fill="#E8A94E"/>
+  <circle cx="470" cy="250" r="5" fill="#EDBB66"/>
+
+  <!-- 薄荷点缀 -->
+  <path d="M546 236 q18 -10 32 2 q-16 12 -32 -2 Z" fill="#7BA05B"/>
+  <path d="M552 238 q12 -2 20 2" stroke="#9DBF6E" stroke-width="3" stroke-linecap="round" fill="none"/>
+
+  <!-- 勺柄探出碗沿 -->
+  <g transform="translate(580 268) rotate(34)">
+    <path d="M0 0 L74 44" stroke="#FFFFFF" stroke-width="11" stroke-linecap="round"/>
+    <path d="M0 0 L74 44" stroke="#EBE3E7" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>
