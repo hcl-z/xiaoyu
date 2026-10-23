@@ -1,0 +1,12 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.51-trip",
+  "base_commit_sha": "3cc228367eb17944ae904ef517d19e0be1e0d490",
+  "prompts": {},
+  "humans": {
+    "h_57e80a12fc07c7": {
+      "author": "hcl-z <1401859664@qq.com>"
+    }
+  }
+}
