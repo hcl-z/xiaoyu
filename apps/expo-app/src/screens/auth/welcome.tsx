@@ -1,8 +1,7 @@
 /**
  * 欢迎页：首次启动的一句话主张 + 矢量碗插画。
- * 「先逛逛」直接进入公共演示空间，不要求任何账号信息。
+ * 只有注册与登录两条路，数据都来自用户本人的真实账号。
  */
-import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,9 +11,6 @@ import { Button } from '@/components/button';
 import { Section } from '@/components/surfaces';
 import { Icon, type IconName } from '@/components/icon';
 import { Body, Caption, Display, Subhead, Wordmark } from '@/components/text';
-import { useSession } from '@/session';
-
-import { ServerEntry } from './server-entry';
 
 const FEATURES: { icon: IconName; title: string; note: string }[] = [
   { icon: 'book-open', title: '菜谱库', note: '分类、用时、可勾选食材' },
@@ -25,33 +21,11 @@ const FEATURES: { icon: IconName; title: string; note: string }[] = [
 export function WelcomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { signInDemo, busy } = useSession();
-  const [error, setError] = useState('');
-
-  /** 免验证入口：直接进入公共演示空间 */
-  const browse = async () => {
-    setError('');
-    const res = await signInDemo();
-    // 失败时把服务端 / 网络的原话显示出来，避免按钮看起来毫无反应
-    if (!res.ok) setError(res.error);
-  };
 
   return (
     <View className="bg-paper flex-1" style={{ paddingTop: insets.top }}>
       <View className="flex-row items-center justify-between px-6 pt-1">
         <Wordmark className="text-[17px]" />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="先逛逛"
-          accessibilityState={{ disabled: busy }}
-          disabled={busy}
-          onPress={() => void browse()}
-          hitSlop={8}
-          className="px-2 py-1">
-          <Body tone="accent" size="text-[15px]">
-            {busy ? '进入中…' : '先逛逛'}
-          </Body>
-        </Pressable>
       </View>
 
       <View className="flex-1 justify-center px-6 py-6">
@@ -87,16 +61,6 @@ export function WelcomeScreen() {
       </View>
 
       <View className="px-6" style={{ paddingBottom: Math.max(insets.bottom, 24) + 16 }}>
-        {error ? (
-          <View className="mb-3 flex-row items-start gap-2 px-1">
-            <View className="mt-[3px] shrink-0">
-              <Icon name="circle-alert" size="sm" tone="danger" />
-            </View>
-            <Caption tone="danger" className="flex-1 leading-relaxed">
-              {error}
-            </Caption>
-          </View>
-        ) : null}
         <Button size="lg" block onPress={() => router.push('/register')}>
           开始使用
         </Button>
@@ -109,7 +73,6 @@ export function WelcomeScreen() {
             我已有账号，登录
           </Body>
         </Pressable>
-        <ServerEntry />
       </View>
     </View>
   );

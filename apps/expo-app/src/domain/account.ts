@@ -5,7 +5,6 @@
  * 校验文案是唯一需要两处保持同步的东西——共享包抽取后再合并。
  */
 
-export const DEMO_EMAIL = 'demo@daily.plus';
 export const NAME_MAX = 20;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

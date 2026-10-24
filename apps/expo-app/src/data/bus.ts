@@ -6,7 +6,7 @@
  * 屏幕代码因此可以逐字对应，不必各自发明刷新策略。
  */
 
-export type DataEventType = 'recipes' | 'checkins' | 'taxonomies';
+export type DataEventType = 'recipes' | 'checkins' | 'taxonomies' | 'auth';
 
 export type DataEvent = {
   type: DataEventType;

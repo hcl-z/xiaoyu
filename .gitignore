@@ -13,6 +13,8 @@ tsconfig.tsbuildinfo
 # env: 连接串与密钥只留在本地
 .env
 .env.local
+# Supabase 的 publishable key 本来就要进客户端，公开值允许入库
+!apps/expo-app/.env
 .env.*.local
 
 # agent task scratch

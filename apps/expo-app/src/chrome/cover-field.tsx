@@ -17,8 +17,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { Icon } from '@/components/icon';
 import { RemoteImage } from '@/components/remote-image';
 import { Body, Caption } from '@/components/text';
-import { apiUrl } from '@/data/client';
-import { pickPhoto, photoPath, uploadPhoto, type PhotoSource } from '@/photo';
+import { pickPhoto, uploadPhoto, type PhotoSource } from '@/photo';
 import { color, hairline, radius } from '@/theme';
 
 import { ActionSheet, ActionSheetIcon } from './action-sheet';
@@ -63,8 +62,7 @@ export function CoverField({
         const picked = await pickPhoto(source);
         // 用户取消不算失败，也不清掉已有封面
         if (!picked) return;
-        const id = await uploadPhoto(picked, 'recipe-cover.jpg');
-        onChange(photoPath(id));
+        onChange(await uploadPhoto(picked, 'covers'));
       } catch (e) {
         setError(e instanceof Error ? e.message : '上传失败，请重试');
       } finally {
@@ -161,7 +159,7 @@ function CoverThumb({ value, busy }: { value: string; busy: boolean }) {
       }}>
       {value ? (
         <RemoteImage
-          uri={apiUrl(value)}
+          src={value}
           style={{ width: THUMB, height: THUMB }}
           accessibilityLabel="菜谱封面"
         />

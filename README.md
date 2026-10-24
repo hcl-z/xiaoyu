@@ -1,87 +1,36 @@
-# daily + · iOS 风格菜谱与饮食打卡
+# daily +
 
-pnpm 管理的 monorepo：Web 应用（前端 + 自建后端 API）与 Expo 移动应用，数据存
-Supabase Postgres，ORM 用 Drizzle。
+精致柔和的 iOS 风菜谱管理与饮食打卡 App（Expo / React Native），**数据与服务全部由 Supabase 承载**：认证 Supabase Auth、数据 Postgres（RLS 行级隔离）、照片 Storage。
 
-## 目录结构
+## 结构
 
-```text
-apps/
-├── web/       # Next.js：产品界面（今日 / 菜谱 / 我的）+ API 路由 + Drizzle
-└── expo-app/  # Expo Router：与 Web 平行的原生应用，含应用内更新
-scripts/       # 发布脚本（release-android / release-ios / changelog）
-.github/       # Release phone app 工作流
+```
+apps/expo-app        # 应用（Expo SDK 57 / expo-router / NativeWind）
+  src/data           # supabase 客户端、数据 hook、Storage 照片、起步种子
+  modules/updater    # 应用内更新（GitHub Releases 检查 + 下载安装）
+scripts              # 本地打包（release-android / release-ios）
+.github/workflows    # 发布工作流：出签名 APK + 免签名 ipa，全在 GitHub 上完成
 ```
 
 ## 开发
 
 ```bash
 pnpm install
-
-# Web（默认命令；API 与页面都从这里出）
-pnpm dev            # http://localhost:3000
-
-# 移动应用（Expo Go 可用；应用内更新只在发布构建生效）
-pnpm dev:expo       # Metro，然后 a / i
-
-# 检查
-pnpm check:all      # 两个应用的 lint + typecheck
+pnpm dev             # Metro（--offline）
+pnpm ios / pnpm android   # 原生构建运行（自定义原生模块需 dev build）
+pnpm check           # typecheck + lint + prettier
 ```
 
-`apps/web` 需要 `DATABASE_URL`（Supabase 事务池器 6543 端口）写在
-`apps/web/.env.local`；数据库结构由 Drizzle 迁移管理：
+`.env`（已入库，均为公开值）：`EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_KEY`（publishable key，权限由 RLS 决定）。
 
-```bash
-pnpm --filter @recipe/web db:generate   # 改 src/db/schema.ts 后生成迁移
-pnpm --filter @recipe/web db:migrate    # 应用到 Supabase
-```
+## 发布
 
-移动端默认连开发机 `:3000`（Metro 主机自动发现）；装好的 APK 在
-「我的 › 服务器地址」里改成后端所在电脑的局域网地址。
+版本来自 `apps/expo-app/app.json`，发布说明来自 `CHANGELOG.md` 对应小节。
+手动触发 GitHub Actions `Release phone app` → 构建 APK/iPA → 草稿 Release → 手动发布并打 `mobile-v<版本>` 标签。Android 端支持应用内更新。
 
-## 发布手机应用（GitHub Releases，不依赖 EAS）
+## 数据模型
 
-版本是 `apps/expo-app/app.json` 的 `version`（Android versionCode 由它推导，
-见 `app.config.ts`）。发布说明来自根 `CHANGELOG.md` 对应小节。
-
-1. 在 `CHANGELOG.md` 写好该版本的 `## [X.Y.Z]` 小节，需要时升 `version` 并提交推送；
-2. 手动触发 Actions 里的 **Release phone app** 工作流（`gh workflow run
-   release-app.yml --ref <分支>`），它创建 `mobile-vX.Y.Z` 的 draft release，
-   在 Ubuntu 上构建签名 APK、在 macOS 上构建免签名 ipa，并上传到 draft；
-3. 检查无误后发布（发布即打 tag）：
-
-```bash
-gh release edit mobile-vX.Y.Z --draft=false
-```
-
-Android 应用每天自动检查一次新版本（GitHub API），发现后弹窗，应用内下载
-（带进度）并调起系统安装器；「我的 › 软件更新」可随时手动检查。iOS 的 ipa
-需要用 AltStore / Sideloadly 等工具以个人 Apple ID 签名后安装。
-
-### 一次性配置：Android 签名密钥
-
-发布密钥是 alias 为 `dailyplus` 的 PKCS12 keystore，维护者保存在
-`~/Library/Application Support/dailyplus/android-keys/`（`release.keystore` 与
-`release.keystore.password`）。丢失它，已安装的应用将无法原地更新。仓库的
-Actions secrets 需要配置：
-
-```bash
-keys="$HOME/Library/Application Support/dailyplus/android-keys"
-base64 -i "$keys/release.keystore" | gh secret set ANDROID_KEYSTORE
-gh secret set ANDROID_KEYSTORE_PASSWORD < "$keys/release.keystore.password"
-```
-
-`scripts/release-android.mjs` 里钉死了发布证书的 SHA-256，任何其他签名的 APK
-都会被构建拒绝——Android 只接受与已装应用同签名的更新。
-
-### 从本机构建
-
-```bash
-pnpm release-android   # dist/android/daily-<version>-android.apk（需 Android SDK + JDK 17）
-pnpm release-ios       # dist/ios/daily-<version>-ios.ipa（需 Xcode + CocoaPods）
-```
-
-## 新增子项目
-
-将项目放到 `apps/<name>` 下，并确保它有独立的 `package.json`。pnpm 会自动将其纳入
-workspace，再按需在根 `package.json` 加 `--filter` 别名。
+- `recipes` / `checkins` / `taxonomies`：`user_id uuid`，RLS 策略 `user_id = auth.uid()`（经 `public.app_uid()` 桥接，auth schema 不直接授权）。
+- 照片：Storage 桶 `checkin-photos`（公开读），路径 `{uid}/checkins|covers/xxx.jpg`。
+- 统计（连续天数 / 28 天热力图 / 总计）由客户端按原始记录现算。
+- 新账号自动写入 6 道起步菜谱与默认分类标签（登录时空账号自动补种）。

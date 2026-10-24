@@ -10,7 +10,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
-import { apiUpload } from '@/data/client';
+import { uploadImage } from '@/data/photos';
 
 const MAX_EDGE = 1600;
 const QUALITY = 0.8;
@@ -71,33 +71,14 @@ export async function pickPhoto(source: PhotoSource): Promise<PreparedPhoto | nu
 }
 
 /**
- * 上传一张已压缩的照片，返回可直接存进业务字段的地址。
- *
- * 打卡与菜谱封面共用这一条通道：服务端同样是 photos 表 + 按会话校验。
- * 返回的是站内相对路径（调用方存字段用），绝对地址由 resolveImageUrl 补。
+ * 上传一张已压缩的照片到本人 Storage 目录，返回可存进业务字段的路径。
+ * 打卡照片与菜谱封面共用这一条通道。
  */
-export async function uploadPhoto(photo: PreparedPhoto, name = 'photo.jpg'): Promise<number> {
-  const form = new FormData();
-  // React Native 的 FormData 接受 { uri, name, type }；类型定义只认 Blob
-  form.append('file', {
-    uri: photo.uri,
-    name,
-    type: 'image/jpeg',
-  } as unknown as Blob);
-  form.append('width', String(photo.width));
-  form.append('height', String(photo.height));
-
-  const res = await apiUpload<{ photo?: { id: number } }>('/api/photos', form);
-  if (!res.ok) throw new Error(res.error);
-  const id = res.data.photo?.id;
-  if (!id) throw new Error('上传失败，请重试');
-  return id;
-}
-
-/**
- * 站内照片的标准地址。
- * 存进 recipe.image / 钉在界面上都用它，避免各处手拼字符串。
- */
-export function photoPath(photoId: number): string {
-  return `/api/photos/${photoId}`;
+export async function uploadPhoto(
+  photo: PreparedPhoto,
+  folder: 'checkins' | 'covers' = 'checkins'
+): Promise<string> {
+  const bytes = await fetch(photo.uri).then((r) => r.arrayBuffer());
+  const name = `${Date.now().toString(36)}.jpg`;
+  return uploadImage(new Uint8Array(bytes), folder, name);
 }

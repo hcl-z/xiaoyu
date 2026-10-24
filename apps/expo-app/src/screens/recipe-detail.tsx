@@ -16,7 +16,6 @@ import { Icon } from '@/components/icon';
 import { RemoteImage, useImageStatus } from '@/components/remote-image';
 import { Badge, EmptyState, ListRow, Section, Skeleton } from '@/components/surfaces';
 import { Body, Caption, Micro, Title } from '@/components/text';
-import { resolveImageUrl } from '@/data/client';
 import { useRecipeHistory, useRecipes } from '@/data/store';
 import { dayLabel, relativeDayLabel, todayISO } from '@/domain/date';
 import { SwapIn, useSwapDirection } from '@/motion';
@@ -53,8 +52,7 @@ export function RecipeDetailScreen() {
   );
 
   /** 也放在提前 return 之前：头图有没有到位，压暗带要跟着判断 */
-  const imageUri = resolveImageUrl(recipe?.image);
-  const { hasPhoto, reportLoaded } = useImageStatus(imageUri);
+  const { hasPhoto, reportLoaded } = useImageStatus(recipe?.image);
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
@@ -117,7 +115,7 @@ export function RecipeDetailScreen() {
         <View>
           <View className="bg-fill h-60 w-full">
             <RemoteImage
-              uri={imageUri}
+              src={recipe?.image ?? null}
               style={{ width: '100%', height: '100%' }}
               placeholder={<Icon name="book-open" size="xl" tone="accent" />}
               onStatusChange={reportLoaded}

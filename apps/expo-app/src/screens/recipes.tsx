@@ -14,7 +14,6 @@ import { SearchField } from '@/components/inputs';
 import { RemoteImage, useImageStatus } from '@/components/remote-image';
 import { EmptyState, ListRow, Section, Skeleton } from '@/components/surfaces';
 import { Body, Caption, Micro, Title } from '@/components/text';
-import { resolveImageUrl } from '@/data/client';
 import { useRecipes, useTaxonomies } from '@/data/store';
 import type { Recipe } from '@/data/types';
 import { relativeDayLabel } from '@/domain/date';
@@ -220,8 +219,7 @@ export function RecipesScreen() {
 }
 
 function FeaturedCard({ recipe, onPress }: { recipe: Recipe; onPress: () => void }) {
-  const uri = resolveImageUrl(recipe.image);
-  const { hasPhoto, reportLoaded } = useImageStatus(uri);
+  const { hasPhoto, reportLoaded } = useImageStatus(recipe.image);
   /**
    * 图挂了就不能再按「照片」来排版：黑色蒙层压在半透明底上会糊成一块脏面，
    * 白字也没了着落。没有真图时退回浅色封面——撤掉蒙层，字换成墨色。
@@ -244,7 +242,7 @@ function FeaturedCard({ recipe, onPress }: { recipe: Recipe; onPress: () => void
       className="rounded-group h-44 w-full overflow-hidden active:opacity-90"
       style={elevationStyle.card}>
       <RemoteImage
-        uri={uri}
+        src={recipe.image}
         style={{ width: '100%', height: '100%' }}
         onStatusChange={reportLoaded}
       />
@@ -309,7 +307,7 @@ function Fact({
 export function RecipeThumb({ recipe, size }: { recipe: Recipe; size: number }) {
   return (
     <RemoteImage
-      uri={resolveImageUrl(recipe.image)}
+      src={recipe.image}
       style={{ width: size, height: size, borderRadius: 14 }}
       placeholder={<Icon name="book-open" size={size >= 48 ? 'md' : 'sm'} tone="accent" />}
     />

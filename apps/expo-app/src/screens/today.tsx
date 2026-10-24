@@ -1,47 +1,33 @@
 /**
- * 今日：周历条与日期选择器可浏览任意过去日期；历史记录可查看、补记与修改，
+ * 今日：周历条与 Hero 完成度环在顶部合为一张大卡，可浏览任意过去日期；
  * 未来日期禁用「记录」、改为「安排」。统计只看已实做的记录。
  *
- * 同一天不再分餐次：记录与未确认的安排合成一条时间轴，按时间排开；
- * 两条间隔超过 TL_CLUSTER_MIN 分钟才画分隔线，挨得近的自然抱成一团。
+ * 时间轴按餐段分簇（早 / 午 / 下午茶 / 晚 / 夜宵），簇内按时间排开；
+ * 今天在对应位置插一条「现在」标线。安排 chips 只在看今天时出现。
  */
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, View } from 'react-native';
-import Animated from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import { NavBar } from '@/chrome';
+import { Alert, NavBar } from '@/chrome';
 import { useCheckinSheet } from '@/chrome/checkin';
 import { Button } from '@/components/button';
 import { Icon } from '@/components/icon';
-import { Stat } from '@/components/data';
-import {
-  Badge,
-  Card,
-  ListRow,
-  Section,
-  SectionHeader,
-  Skeleton,
-  TrailingChevron,
-} from '@/components/surfaces';
+import { Badge, Card, SectionHeader, Skeleton } from '@/components/surfaces';
+import { Pill } from '@/components/controls';
 import { Body, Caption, Micro, Subhead } from '@/components/text';
-import { useCheckinRange, useCheckins, useRecipes, useStats } from '@/data/store';
+import { useCheckinRange, useCheckins, useStats } from '@/data/store';
 import type { Checkin } from '@/data/types';
-import { apiUrl, authedImageSource } from '@/data/client';
-import {
-  WEEKDAYS,
-  monthDayLabel,
-  parseDay,
-  relativeDayLabel,
-  shiftDay,
-  todayISO,
-  weekOf,
-} from '@/domain/date';
-import { layoutTransition, SwapIn, usePressFeedback, useSequenceDirection } from '@/motion';
+import { imageSource } from '@/data/photos';
+import { mealOfTime, type MealGroup } from '@/domain/meal';
+import { WEEKDAYS, parseDay, shiftDay, todayISO, weekOf } from '@/domain/date';
+import { SwapIn, useSequenceDirection } from '@/motion';
 import { useSession } from '@/session';
-import { alpha, color, hairline, motion as mt, radius } from '@/theme';
+import { color } from '@/theme';
 
+import { BowlMark } from '@/brand/bowl-mark';
 import { useTabScreenPadding } from './layout-metrics';
+import { TodayHero } from './today-hero';
 
 /** 周历条可往后看多远（天），给「安排下周吃什么」留出余地 */
 const PLAN_HORIZON = 28;
@@ -77,12 +63,11 @@ export function TodayScreen() {
 
   const history = useCheckins(day);
   const { stats } = useStats();
-  const { recipes } = useRecipes();
   const { user } = useSession();
   /**
    * 整个可安排区间（今天到 PLAN_HORIZON）的安排。
-   * 拉满区间是因为周历上的「已安排」圆点要覆盖所有能排的日子；
-   * 「接下来的安排」列表再按未来七天截取。
+   * 拉满区间是因为周历上的「已安排」标记要覆盖所有能排的日子；
+   * 「接下来的安排」chips 再按未来七天截取。
    */
   const plannedRange = useCheckinRange(shiftDay(today, 1), maxDay);
 
@@ -123,7 +108,7 @@ export function TodayScreen() {
       plannedRange.checkins
         .filter((c) => c.planned && c.day <= shiftDay(today, 7))
         .sort((a, b) => a.day.localeCompare(b.day) || a.time.localeCompare(b.time))
-        .slice(0, 4),
+        .slice(0, 8),
     [plannedRange.checkins, today]
   );
 
@@ -136,35 +121,39 @@ export function TodayScreen() {
     const d = new Date();
     setClock({ day, minutes: d.getHours() * 60 + d.getMinutes() });
   }
-  const nowMinutes = clock.minutes;
+  const nowTime = `${String(Math.floor(clock.minutes / 60)).padStart(2, '0')}:${String(
+    clock.minutes % 60
+  ).padStart(2, '0')}`;
 
   const hasEntries = done.length > 0 || planned.length > 0;
   const showSkeleton = loading && !hasEntries;
 
-  /** 记录与安排合成一条时间轴，今天再插入「现在」 */
-  const nodes = useMemo<TimelineNode[]>(() => {
+  /**
+   * 餐段簇：条目先全局按时间排好，逐条落入所属餐段；
+   * 连续同段自然合并（同一天的夜宵可能一头一尾各出现一次，位置依然正确）。
+   */
+  const clusters = useMemo<MealCluster[]>(() => {
     const entries = [...done, ...planned].sort(
       (a, b) => a.time.localeCompare(b.time) || Number(a.planned) - Number(b.planned)
     );
-    const out: TimelineNode[] = [];
-    const now = minutesToTime(nowMinutes);
-    let placed = false;
-    let prev: Checkin | null = null;
+    const out: MealCluster[] = [];
+    let current: MealCluster | null = null;
+    let nowPlaced = false;
     for (const item of entries) {
-      if (isToday && !placed && item.time > now) {
-        out.push({ kind: 'now' });
-        placed = true;
+      const group = mealOfTime(item.time);
+      if (!current || current.group.key !== group.key) {
+        current = { group, items: [] };
+        out.push(current);
       }
-      out.push({
-        kind: 'entry',
-        item,
-        separator: prev !== null && toMinutes(item.time) - toMinutes(prev.time) >= TL_CLUSTER_MIN,
-      });
-      prev = item;
+      if (isToday && !nowPlaced && item.time > nowTime) {
+        current.items.push({ kind: 'now' });
+        nowPlaced = true;
+      }
+      current.items.push({ kind: 'entry', item });
     }
-    if (isToday && !placed && entries.length > 0) out.push({ kind: 'now' });
+    if (isToday && !nowPlaced && current) current.items.push({ kind: 'now' });
     return out;
-  }, [done, planned, isToday, nowMinutes]);
+  }, [done, planned, isToday, nowTime]);
 
   const headLabel = isFuture ? '这天' : isToday ? '今日' : '当日';
   const headSummary = isFuture
@@ -172,7 +161,7 @@ export function TodayScreen() {
       ? `${planned.length} 道安排`
       : '还没有安排'
     : done.length > 0
-      ? `${done.length} 条记录 · ${done[0].time} – ${done[done.length - 1].time}`
+      ? `${done.length} 条记录`
       : planned.length > 0
         ? `${planned.length} 道安排`
         : '还没有记录';
@@ -196,17 +185,22 @@ export function TodayScreen() {
   /**
    * 日期切换方向：ISO 日期字符串的字典序就是时间序，
    * 所以往后一天新内容从右侧进、往前一天从左侧进。
-   * 与 Tab 的 useSwapDirection 同一套「props 变化时调整 state」模式，
-   * 但日期序列是无限的，比字典序而不是查数组下标。
    */
   const dayDirection = useSequenceDirection(day);
 
-  const monthLabel = `${parseDay(week[0]).getMonth() + 1} 月`;
   const dateLabel = isToday
     ? `${parseDay(day).getMonth() + 1} 月 ${parseDay(day).getDate()} 日 · 星期${WEEKDAYS[parseDay(day).getDay()]}`
     : `${parseDay(day).getFullYear()} 年 ${parseDay(day).getMonth() + 1} 月 ${parseDay(day).getDate()} 日${
         isFuture ? ' · 将来' : ''
       }`;
+
+  /* 时间线上一键确认计划失败时要能被看见，而不是无声无息 */
+  const [planError, setPlanError] = useState<string | null>(null);
+  const confirmPlan = (item: Checkin) => {
+    void sheet.confirmPlan(item).catch(() => {
+      setPlanError('确认失败，请检查网络后再试一次');
+    });
+  };
 
   return (
     <ScrollView
@@ -246,93 +240,22 @@ export function TodayScreen() {
         }
       />
 
-      {/* 日期浏览：始终可见，未来禁用，选中态为蓝色实心 */}
-      <View className="px-5">
-        <Section padded>
-          <View className="mb-2 flex-row items-center justify-between">
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="上一周"
-              onPress={() => select(shiftDay(day, -7))}
-              hitSlop={8}
-              className="-ml-2 h-8 w-8 items-center justify-center rounded-full">
-              <Icon name="chevron-left" size="md" tone="accent" />
-            </Pressable>
-            <Micro>{monthLabel}</Micro>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="下一周"
-              accessibilityState={{ disabled: shiftDay(day, 7) > maxDay }}
-              disabled={shiftDay(day, 7) > maxDay}
-              onPress={() => select(shiftDay(day, 7))}
-              hitSlop={8}
-              className="-mr-2 h-8 w-8 items-center justify-center rounded-full">
-              <Icon
-                name="chevron-right"
-                size="md"
-                tone={shiftDay(day, 7) > maxDay ? 'muted' : 'accent'}
-              />
-            </Pressable>
-          </View>
+      {/* Hero：完成度环 + 连续记录 + 周历条 */}
+      <TodayHero
+        day={day}
+        today={today}
+        maxDay={maxDay}
+        streak={stats.streak}
+        monthActiveDays={stats.totals.activeDays}
+        done={done}
+        planned={planned}
+        week={week}
+        weekCounts={weekCounts}
+        weekPlanned={weekPlanned}
+        onSelect={select}
+      />
 
-          <View className="flex-row">
-            {week.map((d, i) => {
-              const date = parseDay(d);
-              const selected = d === day;
-              const beyond = d > maxDay;
-              const future = d > today;
-              const count = weekCounts[i] ?? 0;
-              const hasPlan = weekPlanned[i] ?? false;
-              const dot =
-                d === today && !selected
-                  ? color.accent
-                  : future
-                    ? hasPlan
-                      ? color.lake
-                      : 'transparent'
-                    : count > 0
-                      ? color.lake
-                      : 'transparent';
-              return (
-                <Pressable
-                  key={d}
-                  accessibilityRole="button"
-                  accessibilityLabel={
-                    future ? `${d}，${hasPlan ? '已有安排' : '可安排'}` : `${d}，${count} 条记录`
-                  }
-                  accessibilityState={{ disabled: beyond, selected }}
-                  disabled={beyond}
-                  onPress={() => select(d)}
-                  className={`flex-1 items-center gap-1 py-1 ${beyond ? 'opacity-25' : ''}`}>
-                  <Body tone="muted" size="text-[11px]" weight="font-normal">
-                    {WEEKDAYS[date.getDay()]}
-                  </Body>
-                  <View
-                    className="h-9 w-9 items-center justify-center rounded-full"
-                    style={selected ? { backgroundColor: color.accent } : undefined}>
-                    <Body
-                      tabular
-                      size="text-[16px]"
-                      weight="font-semibold"
-                      tone={selected ? 'invert' : future ? 'muted' : 'ink'}>
-                      {String(date.getDate())}
-                    </Body>
-                  </View>
-                  <View className="h-1 w-1 rounded-full" style={{ backgroundColor: dot }} />
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <View className="border-hair mt-2 flex-row items-center justify-center gap-4 border-t pt-2.5">
-            <Legend color={color.lake} text="有记录 / 已安排" />
-            <Legend color={color.accent} text="今天" />
-          </View>
-        </Section>
-      </View>
-
-      {/* 时间轴：记录与未确认的安排共用一条轨道，按时间排开 */}
-      {/* 整块日期相关的内容跟着 day 换批：往后一天从右侧落位，往前一天从左侧 */}
+      {/* 时间轴：按餐段分簇，整块内容跟着 day 换批 */}
       <SwapIn swapKey={day} direction={dayDirection} style={{ rowGap: 24 }}>
         {hasEntries || showSkeleton ? (
           <View className="px-5">
@@ -341,45 +264,33 @@ export function TodayScreen() {
               trailing={showSkeleton ? null : <Caption tabular>{headSummary}</Caption>}
             />
             <Card padded={false}>
-              <View style={{ paddingTop: 4, paddingBottom: 5 }}>
-                {showSkeleton ? (
-                  <TimelineSkeleton />
-                ) : (
-                  nodes.map((node, i) => {
-                    const line = railLine(i, nodes.length);
-                    if (node.kind === 'now') return <NowRow key="now" line={line} />;
-                    return (
-                      <TimelineRow
-                        key={node.item.id}
-                        item={node.item}
-                        line={line}
-                        separator={node.separator}
-                        trailing={
-                          node.item.planned ? (
-                            isFuture ? (
-                              <Badge tone="lake">计划</Badge>
-                            ) : (
-                              <Pressable
-                                accessibilityRole="button"
-                                accessibilityLabel={`确认吃了 ${node.item.title}`}
-                                onPress={() => void sheet.confirmPlan(node.item)}
-                                className="bg-lake-tint rounded-control h-8 flex-row items-center gap-1 px-2.5 active:opacity-70">
-                                <Icon name="check" size="sm" tone="lake" strokeWidth={2.6} />
-                                <Body tone="lake" size="text-[13px]" weight="font-semibold">
-                                  吃了
-                                </Body>
-                              </Pressable>
-                            )
-                          ) : (
-                            <TrailingChevron />
-                          )
-                        }
-                        onPress={() => sheet.openCheckin({ day, existing: node.item })}
-                      />
-                    );
-                  })
-                )}
-              </View>
+              {showSkeleton ? (
+                <TimelineSkeleton />
+              ) : (
+                clusters.map((cluster, ci) => (
+                  <View key={`${cluster.group.key}-${ci}`} style={{ paddingBottom: 10 }}>
+                    <ClusterHeader
+                      group={cluster.group}
+                      count={cluster.items.filter((n) => n.kind === 'entry').length}
+                    />
+                    {cluster.items.map((node, i) =>
+                      node.kind === 'now' ? (
+                        <NowMark key="now" />
+                      ) : (
+                        <MealRow
+                          key={node.item.id}
+                          item={node.item}
+                          group={cluster.group}
+                          separated={i > 0}
+                          isFuture={isFuture}
+                          onConfirm={() => confirmPlan(node.item)}
+                          onPress={() => sheet.openCheckin({ day, existing: node.item })}
+                        />
+                      )
+                    )}
+                  </View>
+                ))
+              )}
             </Card>
             <Caption className="mt-2 px-1">
               {isFuture
@@ -388,341 +299,260 @@ export function TodayScreen() {
             </Caption>
           </View>
         ) : (
-          /* 空状态：不摆卡片、也不进时间轴，把「现在」的位置让给一句邀请 */
+          /* 空状态：把「现在」的位置让给一句邀请 */
           <DayEmptyState
             isToday={isToday}
             isFuture={isFuture}
-            onPress={() => sheet.openCheckin({ day })}
+            onRecord={() => sheet.openCheckin({ day })}
+            onPhoto={() => sheet.openPhotoCheckin({ day })}
           />
         )}
 
         {/* 看今天时预告未来一周的安排，点进去就是那天 */}
         {isToday && upcomingPlans.length > 0 ? (
-          <View className="px-5">
-            <Section title="接下来的安排" footer="未来七天 · 点击查看那天">
+          <View>
+            <View className="px-5">
+              <SectionHeader
+                label="接下来的安排"
+                trailing={<Caption tone="muted">{upcomingPlans.length} 道 · 未来七天</Caption>}
+              />
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
               {upcomingPlans.map((item) => (
-                <ListRow
+                <Pill
                   key={item.id}
-                  leading={
-                    <View className="h-[22px] w-[22px] items-center justify-center">
-                      <Icon name="calendar-clock" size="md" tone="lake" />
-                    </View>
-                  }
-                  title={item.title}
-                  subtitle={`${monthDayLabel(item.day)} · 星期${WEEKDAYS[parseDay(item.day).getDay()]}`}
-                  accessory="chevron"
+                  tone="lake"
                   onPress={() => select(item.day)}
-                />
+                  className="max-w-[220px]">
+                  <Caption numberOfLines={1}>
+                    {WEEKDAYS[parseDay(item.day).getDay()]} · {item.title}
+                  </Caption>
+                </Pill>
               ))}
-            </Section>
-          </View>
-        ) : null}
-
-        {/* 常做菜谱：次数与「上次做于」已经是真数据，由打卡派生 */}
-        {recipes.length > 0 ? (
-          <View className="px-5">
-            <Section title="常做菜谱" footer="按制作次数排序，点击查看详情">
-              {[...recipes]
-                .sort((a, b) => b.cooked - a.cooked)
-                .slice(0, 3)
-                .map((recipe) => (
-                  <ListRow
-                    key={recipe.slug}
-                    leading={
-                      <View className="bg-tint rounded-thumb h-10 w-10 items-center justify-center">
-                        <Icon name="clock" size="md" tone="accent" />
-                      </View>
-                    }
-                    title={recipe.title}
-                    subtitle={`${recipe.category} · ${relativeDayLabel(recipe.lastCookedOn)} · 累计 ${recipe.cooked} 次`}
-                    accessory="chevron"
-                    onPress={() => router.push(`/recipes/${recipe.slug}`)}
-                  />
-                ))}
-            </Section>
+            </ScrollView>
           </View>
         ) : null}
       </SwapIn>
 
-      <View className="flex-row gap-3 px-5">
-        <View className="flex-1">
-          <Section padded>
-            <Stat value={stats.totals.activeDays} label="本月打卡天" tone="accent" />
-          </Section>
-        </View>
-        <View className="flex-1">
-          <Section padded>
-            <Stat value={stats.totals.checkins} label="累计记录" />
-          </Section>
-        </View>
-        <View className="flex-1">
-          <Section padded>
-            <Stat value={stats.totals.planned} label="待赴的安排" tone="lake" />
-          </Section>
-        </View>
-      </View>
+      <Alert
+        open={planError !== null}
+        title="没能确认这顿"
+        message={planError ?? ''}
+        confirmLabel="知道了"
+        onCancel={() => setPlanError(null)}
+        onConfirm={() => setPlanError(null)}
+      />
     </ScrollView>
   );
 }
 
-/**
- * 一天没有任何内容时的兜底。
- * 过去 / 今天：邀请写一句；将来：邀请挂一道计划。
- * 两者只是图标与文案不同，骨架共用——同一屏不该出现两套空态语言。
- */
-function DayEmptyState({
-  isToday,
-  isFuture,
-  onPress,
-}: {
-  isToday: boolean;
-  isFuture: boolean;
-  onPress: () => void;
-}) {
+/* ------------------------------------------------------------------ */
+/* 餐段时间线                                                           */
+/* ------------------------------------------------------------------ */
+
+type ClusterItem = { kind: 'entry'; item: Checkin } | { kind: 'now' };
+type MealCluster = { group: MealGroup; items: ClusterItem[] };
+
+/** 行首缩进：与文字左缘对齐，簇内分隔线也从这里开始 */
+const ROW_LEAD = 88;
+
+function ClusterHeader({ group, count }: { group: MealGroup; count: number }) {
   return (
-    <View className="px-5">
-      {/*
-       * 空状态不是页面主内容，不该按整屏高度撑开：
-       * minHeight 取一个紧凑但可呼应的值，把内容留在周历下方不远处，
-       * 一眼就能从「这周什么也没发生」直接读到邀请。
-       */}
-      <View className="items-center justify-center pt-6 pb-10" style={{ minHeight: 232 }}>
-        <View className="bg-fill-deep h-14 w-14 items-center justify-center rounded-full">
-          <Icon name={isFuture ? 'calendar-plus' : 'notebook-pen'} size="xl" tone="soft" />
-        </View>
-        <Subhead className="mt-4 text-center">
-          {isFuture ? '这天还没安排' : isToday ? '今天吃了什么？' : '这天吃了什么？'}
-        </Subhead>
-        <Caption className="mt-1.5 text-center" style={{ maxWidth: 250 }}>
-          {isFuture ? '提前挂上想做的菜，到时不用现想吃什么。' : '写一句，或者直接拍张照。'}
-        </Caption>
-        <View className="mt-5">
-          <Button onPress={onPress}>{isFuture ? '安排一道' : '记一笔'}</Button>
-        </View>
+    <View
+      className="flex-row items-center px-4"
+      style={{ paddingTop: 14, paddingBottom: 6, gap: 4 }}>
+      <View className="bg-tint h-[30px] w-[30px] items-center justify-center rounded-full">
+        <Icon name={group.icon} size="md" tone="accent" />
+      </View>
+      <Body size="text-[16px]" weight="font-semibold">
+        {group.label}
+      </Body>
+      <View className="bg-fill ml-1 rounded-full px-2 py-0.5">
+        <Micro tone="muted">{count}</Micro>
       </View>
     </View>
   );
 }
 
-function Legend({ color: tone, text }: { color: string; text: string }) {
-  return (
-    <View className="flex-row items-center gap-1.5">
-      <View className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: tone }} />
-      <Body tone="muted" size="text-[11px]" weight="font-normal">
-        {text}
-      </Body>
-    </View>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* 时间轴                                                               */
-/* ------------------------------------------------------------------ */
-
-/** 时间列宽：整列右对齐（贴着轨道），13pt 的 HH:MM 直接用它，不必再扣内边距 */
-const TL_GUTTER = 52;
-/** 轨道列宽 */
-const TL_RAIL = 20;
-/** 分隔线与内容的起始位置 */
-const TL_INSET = TL_GUTTER + TL_RAIL;
-/** 行内容上下内边距 */
-const TL_PAD_Y = 12;
-/** 标题行（15/22）的中线：时间、圆点都对齐到这里，而不是整行居中 */
-const TL_DOT_Y = TL_PAD_Y + 11;
-/** 「现在」行的高度与中线 */
-const TL_NOW_H = 38;
-const TL_NOW_Y = TL_NOW_H / 2;
-/** 间隔超过这个分钟数才画分隔线：挨得近的自然抱团，不必再分餐次 */
-const TL_CLUSTER_MIN = 120;
-
-type TimelineNode = { kind: 'entry'; item: Checkin; separator: boolean } | { kind: 'now' };
-
-function toMinutes(time: string) {
-  const [h, m] = time.split(':');
-  return Number(h) * 60 + Number(m);
-}
-
-function minutesToTime(mins: number) {
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
-/** 轨道竖线在本行的画法：首行不向上伸、末行不向下伸 */
-function railLine(index: number, total: number) {
-  if (total <= 1) return 'none' as const;
-  if (index === 0) return 'start' as const;
-  if (index === total - 1) return 'end' as const;
-  return 'mid' as const;
-}
-
-function Rail({ line, dot }: { line: ReturnType<typeof railLine>; dot: 'done' | 'plan' | 'now' }) {
-  const center = dot === 'now' ? TL_NOW_Y : TL_DOT_Y;
-  const size = dot === 'now' ? 10 : 9;
-  /** 白圈把竖线干净地断在圆点两侧 */
-  const ring = dot === 'now' ? 16 : 15;
-  const halo = dot === 'now' ? 23 : 0;
-  const mid = TL_RAIL / 2;
-
-  return (
-    <View className="relative self-stretch" style={{ width: TL_RAIL }}>
-      {line === 'none' ? null : (
-        <View
-          className="bg-paper-deep absolute"
-          style={[
-            { left: mid - 1, width: 2 },
-            line === 'start'
-              ? { top: center, bottom: 0 }
-              : line === 'end'
-                ? { top: 0, height: center }
-                : { top: 0, bottom: 0 },
-          ]}
-        />
-      )}
-      {halo > 0 ? (
-        <View
-          className="absolute rounded-full"
-          style={{
-            left: mid - halo / 2,
-            top: center - halo / 2,
-            width: halo,
-            height: halo,
-            backgroundColor: alpha.accent28,
-          }}
-        />
-      ) : null}
-      <View
-        className="bg-card absolute rounded-full"
-        style={{ left: mid - ring / 2, top: center - ring / 2, width: ring, height: ring }}
-      />
-      <View
-        className="absolute rounded-full"
-        style={{
-          left: mid - size / 2,
-          top: center - size / 2,
-          width: size,
-          height: size,
-          backgroundColor: dot === 'done' ? color.lake : dot === 'now' ? color.accent : color.card,
-          borderWidth: dot === 'plan' ? 1.5 : 0,
-          borderColor: color.fillDeep,
-        }}
-      />
-    </View>
-  );
-}
-
-function TimelineRow({
+function MealRow({
   item,
-  trailing,
-  separator,
-  line,
+  group,
+  separated,
+  isFuture,
+  onConfirm,
   onPress,
 }: {
   item: Checkin;
-  trailing: ReactNode;
-  separator: boolean;
-  line: ReturnType<typeof railLine>;
+  group: MealGroup;
+  separated: boolean;
+  isFuture: boolean;
+  onConfirm: () => void;
   onPress: () => void;
 }) {
-  const { animatedStyle, onPressIn, onPressOut } = usePressFeedback(mt.pressScale.block);
+  const photo = imageSource(item.photoPath);
 
   return (
-    <Animated.View style={animatedStyle} layout={layoutTransition}>
-      <Pressable
-        className="active:bg-fill/60 w-full"
-        accessibilityRole="button"
-        accessibilityLabel={item.planned ? `修改计划 ${item.title}` : `修改 ${item.title}`}
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}>
-        <View className="relative flex-row items-start">
-          {separator ? (
-            <View
-              className="bg-hair absolute"
-              style={{ left: TL_INSET, right: 16, top: 0, height: hairline }}
-            />
-          ) : null}
-
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={item.planned ? `修改计划 ${item.title}` : `修改 ${item.title}`}
+      onPress={onPress}
+      className="active:bg-fill/60 relative w-full">
+      {separated ? (
+        <View
+          className="bg-hair absolute"
+          style={{ left: ROW_LEAD, right: 0, top: 0, height: 1 }}
+        />
+      ) : null}
+      <View
+        className="flex-row items-center"
+        style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+        {photo ? (
+          <Image
+            source={photo}
+            resizeMode="cover"
+            accessibilityLabel="打卡照片"
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 14,
+              backgroundColor: color.fill,
+            }}
+          />
+        ) : (
           <View
-            className="shrink-0 items-end"
-            style={{ width: TL_GUTTER, paddingTop: TL_DOT_Y - 9.5 }}>
-            <Caption tabular numberOfLines={1}>
-              {item.time}
+            className="bg-tint h-10 w-10 items-center justify-center rounded-full"
+            style={{ opacity: item.planned ? 0.55 : 1 }}>
+            <Icon name={group.icon} size="lg" tone="accent" />
+          </View>
+        )}
+
+        <View className="min-w-0 flex-1" style={{ marginLeft: 12 }}>
+          <Body
+            numberOfLines={1}
+            size="text-[16px]"
+            weight="font-semibold"
+            tone={item.planned ? 'soft' : 'ink'}>
+            {item.title}
+          </Body>
+          {item.note ? (
+            <Caption numberOfLines={1} tone="muted" className="mt-0.5">
+              {item.note}
             </Caption>
-          </View>
-
-          <Rail line={line} dot={item.planned ? 'plan' : 'done'} />
-
-          <View
-            className="min-w-0 flex-1"
-            style={{ paddingTop: TL_PAD_Y, paddingBottom: TL_PAD_Y, paddingRight: 16 }}>
-            <View className="flex-row items-center gap-2.5">
-              <View className="min-w-0 flex-1">
-                <Body numberOfLines={1} tone={item.planned ? 'soft' : 'ink'}>
-                  {item.title}
-                </Body>
-                {item.note ? (
-                  <Caption numberOfLines={1} className="mt-0.5">
-                    {item.note}
-                  </Caption>
-                ) : null}
-                {item.photoId ? (
-                  <Image
-                    source={authedImageSource(apiUrl(`/api/photos/${item.photoId}`))}
-                    resizeMode="cover"
-                    accessibilityLabel="打卡照片"
-                    style={{
-                      marginTop: 10,
-                      alignSelf: 'stretch',
-                      height: 152,
-                      borderRadius: radius.thumb,
-                      backgroundColor: color.fill,
-                    }}
-                  />
-                ) : null}
-              </View>
-              {trailing}
-            </View>
-          </View>
+          ) : null}
         </View>
-      </Pressable>
-    </Animated.View>
+
+        {/* 已记录的行不加箭头：整行可点已经足够，箭头会稀释「吃了」键 */}
+        {item.planned ? (
+          isFuture ? (
+            <Badge tone="lake">计划</Badge>
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`确认吃了 ${item.title}`}
+              onPress={onConfirm}
+              className="bg-lake-tint rounded-control h-8 flex-row items-center gap-1 px-2.5 active:opacity-70">
+              <Icon name="check" size="sm" tone="lake" strokeWidth={2.6} />
+              <Body tone="lake" size="text-[13px]" weight="font-semibold">
+                吃了
+              </Body>
+            </Pressable>
+          )
+        ) : null}
+      </View>
+    </Pressable>
   );
 }
 
-function NowRow({ line }: { line: ReturnType<typeof railLine> }) {
+/** 「现在」标线：实心小药丸，醒目地卡在它该在的位置 */
+function NowMark() {
   return (
-    <View className="flex-row items-start" style={{ height: TL_NOW_H }}>
-      <View className="shrink-0 items-end" style={{ width: TL_GUTTER, paddingTop: TL_NOW_Y - 7 }}>
-        <Body tone="accent" size="text-micro" weight="font-semibold" numberOfLines={1}>
+    <View
+      className="flex-row items-center"
+      style={{ paddingHorizontal: 16, paddingVertical: 7, gap: 8 }}>
+      <View
+        className="flex-row items-center rounded-full"
+        style={{ backgroundColor: color.accent, paddingHorizontal: 9, height: 22 }}>
+        <Body tone="invert" size="text-micro" weight="font-semibold">
           现在
         </Body>
       </View>
-      <Rail line={line} dot="now" />
-      <View className="flex-1" />
+      <View
+        className="h-[2px] flex-1 rounded-full"
+        style={{ backgroundColor: `${color.accent}2E` }}
+      />
     </View>
   );
 }
 
 function TimelineSkeleton() {
   return (
-    <>
+    <View style={{ paddingTop: 12, paddingBottom: 6, rowGap: 14 }}>
       {[0, 1, 2].map((i) => (
-        <View key={i} className="flex-row items-start">
-          <View
-            className="shrink-0 items-end"
-            style={{ width: TL_GUTTER, paddingTop: TL_DOT_Y - 6 }}>
-            <Skeleton className="h-3 w-9" rounded={4} />
-          </View>
-          <View style={{ width: TL_RAIL }} />
-          <View
-            className="flex-1"
-            style={{ paddingTop: TL_PAD_Y, paddingBottom: TL_PAD_Y, paddingRight: 16 }}>
+        <View key={i} className="flex-row items-center" style={{ paddingHorizontal: 16, gap: 12 }}>
+          <Skeleton className="h-9 w-9" rounded={99} />
+          <View className="flex-1" style={{ rowGap: 6 }}>
             <Skeleton className="h-3.5 w-28" rounded={4} />
-            <Skeleton className="mt-2 h-2.5 w-40" rounded={4} />
+            <Skeleton className="h-2.5 w-20" rounded={4} />
           </View>
         </View>
       ))}
-    </>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* 空状态                                                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 一天没有任何内容时的兜底。
+ * 今天 / 过去：记一笔或拍一张；将来：挂一道计划。
+ */
+function DayEmptyState({
+  isToday,
+  isFuture,
+  onRecord,
+  onPhoto,
+}: {
+  isToday: boolean;
+  isFuture: boolean;
+  onRecord: () => void;
+  onPhoto: () => void;
+}) {
+  return (
+    <View className="px-5">
+      {/*
+       * 空状态不是页面主内容，不该按整屏高度撑开：
+       * minHeight 取一个紧凑但可呼应的值，把内容留在 Hero 下方不远处。
+       */}
+      <View className="items-center justify-center pt-6 pb-10" style={{ minHeight: 240 }}>
+        <BowlMark size={72} />
+        <Subhead className="mt-4 text-center">
+          {isFuture ? '这天还没安排' : isToday ? '今天还没开张' : '这天吃了什么？'}
+        </Subhead>
+        <Caption className="mt-1.5 text-center" style={{ maxWidth: 250 }}>
+          {isFuture
+            ? '提前挂上想做的菜，到时不用现想吃什么。'
+            : isToday
+              ? '吃的时候顺手记一笔，一天就这样有了痕迹。'
+              : '补一句也行，那天值得被记住。'}
+        </Caption>
+        {isFuture ? (
+          <View className="mt-5">
+            <Button onPress={onRecord}>安排一道</Button>
+          </View>
+        ) : (
+          <View className="mt-5 flex-row" style={{ gap: 10 }}>
+            <Button onPress={onRecord}>记一笔</Button>
+            <Button variant="tonal" onPress={onPhoto}>
+              拍一张
+            </Button>
+          </View>
+        )}
+      </View>
+    </View>
   );
 }

@@ -1,12 +1,11 @@
 /**
- * daily + · API 契约
+ * daily + · 数据契约
  * ------------------------------------------------------------------
- * 与 Web 的 lib/use-app-data.ts、lib/content.ts 同一套形状。
- * 服务端返回什么，这里就是什么；客户端不派生、不缓存派生值
- * （做过次数 / 上次做于都由服务端按打卡记录算好）。
+ * 与 Supabase 表一一对应。统计（连续天数 / 热力图 / 总计）由客户端
+ * 按原始记录现算；「做过几次 / 上次做于」写入时同步到菜谱行。
  */
 
-export type SessionUser = { id: number; email: string; name: string };
+export type SessionUser = { id: string; email: string; name: string };
 
 export type Recipe = {
   id?: number;
@@ -37,8 +36,8 @@ export type Checkin = {
   portion: string;
   time: string;
   note: string;
-  /** 照片打卡的图 id；null = 菜谱或手输打卡 */
-  photoId: number | null;
+  /** 照片打卡的 Storage 路径；null = 菜谱或手输打卡 */
+  photoPath: string | null;
   /** true = 未来的用餐计划，尚未确认吃到 */
   planned: boolean;
 };

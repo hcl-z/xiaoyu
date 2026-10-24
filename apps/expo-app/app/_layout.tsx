@@ -44,7 +44,6 @@ export default function RootLayout() {
                 <Stack.Screen name="recipes/[slug]/edit" options={MODAL_ROUTE_OPTIONS} />
                 <Stack.Screen name="profile/categories" options={MODAL_ROUTE_OPTIONS} />
                 <Stack.Screen name="profile/tags" options={MODAL_ROUTE_OPTIONS} />
-                <Stack.Screen name="showcase" options={{ animation: 'slide_from_right' }} />
               </Stack>
               <StatusBar style="dark" />
             </CheckinProvider>

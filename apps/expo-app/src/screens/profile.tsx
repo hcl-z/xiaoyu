@@ -12,7 +12,7 @@ import { Button } from '@/components/button';
 import { Badge, ListRow, Section } from '@/components/surfaces';
 import { Heatmap, HeatmapLegend, Stat } from '@/components/data';
 import { Icon } from '@/components/icon';
-import { FieldError, TextField } from '@/components/inputs';
+import { FieldError } from '@/components/inputs';
 import { Body, Caption, Metric, Micro } from '@/components/text';
 import {
   checkForUpdates,
@@ -34,42 +34,14 @@ export function ProfileScreen() {
   const { paddingTop, paddingBottom } = useTabScreenPadding();
   const { stats, loading } = useStats();
   const { categories, tags, loading: taxonomiesLoading } = useTaxonomies();
-  const { user, isDemo, busy, signOut, serverUrl, switchServer } = useSession();
+  const { user, busy, signOut } = useSession();
   const [confirmLogout, setConfirmLogout] = useState(false);
-  const [about, setAbout] = useState(false);
-  const [serverSheet, setServerSheet] = useState(false);
-  const [serverInput, setServerInput] = useState('');
-  const [serverError, setServerError] = useState('');
-  const [serverBusy, setServerBusy] = useState(false);
   const [updateSheet, setUpdateSheet] = useState(false);
 
   // 更新模块的状态是模块级单例，订阅变化重渲染这一页
   const [, setUpdateTick] = useState(0);
   useEffect(() => subscribeUpdates(() => setUpdateTick((n) => n + 1)), []);
   const updateState = getUpdatesState();
-
-  /** 只露主机与端口：完整地址放进弹层里展示，行内保持一行的呼吸感 */
-  const serverHost = useMemo(() => {
-    try {
-      return new URL(serverUrl).host;
-    } catch {
-      return serverUrl;
-    }
-  }, [serverUrl]);
-
-  const saveServer = async () => {
-    if (serverBusy) return;
-    setServerError('');
-    setServerBusy(true);
-    const res = await switchServer(serverInput);
-    setServerBusy(false);
-    if (!res.ok) {
-      setServerError(res.error);
-      return;
-    }
-    // 切换成功即回到入口重新登录，Sheet 随页面一起卸载
-    setServerSheet(false);
-  };
 
   const heat = useMemo(() => stats.days.map((d) => d.count), [stats.days]);
   const heatDays = useMemo(() => stats.days.map((d) => d.day), [stats.days]);
@@ -96,7 +68,6 @@ export function ProfileScreen() {
                 <Body numberOfLines={1} size="text-title" weight="font-bold" className="shrink">
                   {name}
                 </Body>
-                {isDemo ? <Badge tone="gray">演示账号</Badge> : null}
               </View>
               <Caption className="mt-0.5">
                 {loading ? '统计中…' : `本月 ${stats.totals.activeDays} 天有记录`}
@@ -177,30 +148,16 @@ export function ProfileScreen() {
       </View>
 
       <View className="px-5">
-        <Section title="服务器" footer="装好的 App 指向运行 daily + 后端的电脑；地址变了改这里就行">
+        <Section title="关于" footer="新版本发布在 GitHub Releases，Android 端支持应用内更新">
           <ListRow
             leading={
               <View className="h-[22px] w-[22px] items-center justify-center">
-                <Icon name="database" size="md" tone="accent" />
+                <Icon name="info" size="md" tone="accent" />
               </View>
             }
-            title="服务器地址"
-            subtitle="保存后会退出登录，需要重新进入"
-            value={serverHost}
-            accessory="chevron"
-            onPress={() => {
-              setServerInput('');
-              setServerError('');
-              setServerSheet(true);
-            }}
+            title="版本"
+            value={installedVersion}
           />
-        </Section>
-      </View>
-
-      <View className="px-5">
-        <Section
-          title="软件更新"
-          footer="新版本发布在本仓库的 GitHub Releases，安装包经签名校验后才会被系统接受">
           <ListRow
             leading={
               <View className="h-[22px] w-[22px] items-center justify-center">
@@ -211,8 +168,7 @@ export function ProfileScreen() {
             subtitle={
               updatesSupported ? '每天自动检查一次，也可现在手动检查' : '当前构建不支持应用内更新'
             }
-            value={installedVersion}
-            accessory="chevron"
+            accessory={updatesSupported ? 'chevron' : 'none'}
             onPress={() => {
               if (!updatesSupported) return;
               void checkForUpdates();
@@ -223,27 +179,7 @@ export function ProfileScreen() {
       </View>
 
       <View className="px-5">
-        <Section title="关于">
-          <ListRow
-            leading={
-              <View className="h-[22px] w-[22px] items-center justify-center">
-                <Icon name="info" size="md" tone="accent" />
-              </View>
-            }
-            title="关于 daily +"
-            value={installedVersion}
-            accessory="chevron"
-            onPress={() => setAbout(true)}
-          />
-        </Section>
-      </View>
-
-      <View className="px-5">
-        <Section
-          title="账号"
-          footer={
-            isDemo ? '演示账号为公共数据，所有体验者都能看到' : '登录状态会在本设备保留 30 天'
-          }>
+        <Section title="账号" footer="登录状态会在本设备保留 30 天">
           <ListRow
             leading={
               <View className="h-[22px] w-[22px] items-center justify-center">
@@ -267,41 +203,6 @@ export function ProfileScreen() {
       </View>
 
       <Micro className="px-4 text-center">DAILY + {installedVersion}</Micro>
-
-      <Sheet
-        open={serverSheet}
-        onClose={() => setServerSheet(false)}
-        title="服务器地址"
-        subtitle="指向运行 daily + 后端的电脑"
-        action={{
-          label: serverBusy ? '保存中…' : '保存',
-          onPress: () => void saveServer(),
-          disabled: serverBusy,
-        }}>
-        <View className="gap-4 pb-2">
-          <TextField
-            value={serverInput}
-            onChange={(v) => {
-              setServerInput(v);
-              setServerError('');
-            }}
-            label="新地址"
-            placeholder="http://192.168.1.5:3000"
-            align="left"
-            layout="stacked"
-            inputMode="text"
-            error={Boolean(serverError)}
-            autoFocus
-          />
-          {serverError ? <FieldError>{serverError}</FieldError> : null}
-          <View className="gap-1">
-            <Caption>当前地址：{serverUrl}</Caption>
-            <Caption tone="muted">
-              与后端保持同一网络；示例 http://192.168.1.5:3000。{'\n'}留空保存则恢复默认地址。
-            </Caption>
-          </View>
-        </View>
-      </Sheet>
 
       <Sheet
         open={updateSheet}
@@ -360,20 +261,6 @@ export function ProfileScreen() {
           )}
         </View>
       </Sheet>
-
-      <Alert
-        open={about}
-        title="daily +"
-        message="菜谱管理与每日饮食打卡。想到就记，不用先归类。"
-        cancelLabel="知道了"
-        confirmLabel="查看系统"
-        destructive={false}
-        onCancel={() => setAbout(false)}
-        onConfirm={() => {
-          setAbout(false);
-          router.push('/showcase');
-        }}
-      />
 
       <Alert
         open={confirmLogout}

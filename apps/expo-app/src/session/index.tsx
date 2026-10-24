@@ -1,10 +1,9 @@
 /**
  * daily + · SESSION
  * ------------------------------------------------------------------
- * 原生端不依赖 Cookie：登录 / 注册 / 演示入口拿到令牌后存进设备钥匙串，
- * 启动时用令牌换回当前用户，会话失效则回到入口。
- *
- * 与 Web 的差别只有传输方式；「点击登录直接进入公共演示空间」这条路径保留。
+ * 认证交给 Supabase Auth：令牌持久化与自动刷新由 supabase-js 负责，
+ * 这里只把「登录 / 注册 / 退出」翻译成应用内的会话语义。
+ * 新账号注册成功后写入起步菜谱与默认分类标签。
  */
 import {
   createContext,
@@ -16,42 +15,21 @@ import {
   type ReactNode,
 } from 'react';
 
-import { DEMO_EMAIL } from '@/domain/account';
-import {
-  apiGet,
-  apiPost,
-  getApiBaseUrl,
-  setApiBaseUrl,
-  setAuthToken,
-  setUnauthorizedHandler,
-} from '@/data/client';
-import { readApiBaseOverride, writeApiBaseOverride } from '@/data/api-base';
+import { supabase } from '@/data/supabase';
 import { resetDataCaches } from '@/data/store';
+import { STARTER_RECIPES, DEFAULT_CATEGORIES, DEFAULT_TAGS } from '@/data/starter';
 import type { SessionUser } from '@/data/types';
-
-import { clearToken, readToken, writeToken } from './storage';
 
 export type SessionStatus = 'loading' | 'signedOut' | 'signedIn';
 export type AuthOutcome = { ok: true } | { ok: false; error: string };
-export type ServerOutcome = { ok: true; effective: string } | { ok: false; error: string };
 
 type SessionValue = {
   status: SessionStatus;
   user: SessionUser | null;
-  isDemo: boolean;
   busy: boolean;
-  signInDemo: () => Promise<AuthOutcome>;
   signIn: (email: string, password: string) => Promise<AuthOutcome>;
   register: (name: string, email: string, password: string) => Promise<AuthOutcome>;
   signOut: () => Promise<void>;
-  /** 当前生效的服务器地址（我的 › 服务器地址里展示用） */
-  serverUrl: string;
-  /**
-   * 切换服务器地址。令牌是发给某一台服务器的，换服务器等于换账号空间，
-   * 所以切换后一律清空本地会话，回到欢迎页重新进入。
-   * 传空字符串则恢复编译期默认地址。
-   */
-  switchServer: (input: string) => Promise<ServerOutcome>;
 };
 
 const SessionContext = createContext<SessionValue | null>(null);
@@ -62,150 +40,161 @@ export function useSession(): SessionValue {
   return ctx;
 }
 
-type AuthResponse = { user: SessionUser; token?: string };
+function toSessionUser(user: {
+  id: string;
+  email?: string | null;
+  user_metadata?: Record<string, unknown> | null;
+}): SessionUser {
+  const metaName = user.user_metadata?.name;
+  const email = user.email ?? '';
+  return {
+    id: user.id,
+    email,
+    name: typeof metaName === 'string' ? metaName : email.split('@')[0] || '我',
+  };
+}
+
+/** 新账号的起步内容：6 道入门菜谱 + 默认分类 / 标签 */
+async function seedStarterContent(uid: string) {
+  const { error: recipeError } = await supabase.from('recipes').insert(
+    STARTER_RECIPES.map((r) => ({
+      user_id: uid,
+      slug: r.slug,
+      title: r.title,
+      subtitle: r.subtitle,
+      category: r.category,
+      minutes: r.minutes,
+      servings: r.servings,
+      image: r.image,
+      favorite: r.favorite,
+      cooked: 0,
+      tags: r.tags,
+      ingredients: r.ingredients,
+      steps: r.steps,
+    }))
+  );
+  if (recipeError) throw new Error(recipeError.message);
+  const { error: taxError } = await supabase.from('taxonomies').insert([
+    ...DEFAULT_CATEGORIES.map((name) => ({
+      user_id: uid,
+      kind: 'category',
+      name,
+      sort_order: 0,
+    })),
+    ...DEFAULT_TAGS.map((name, i) => ({ user_id: uid, kind: 'tag', name, sort_order: i })),
+  ]);
+  if (taxError) throw new Error(taxError.message);
+}
+
+/** 空账号（一道菜谱都没有）补一份起步内容；已有内容的账号不动 */
+async function seedStarterContentIfEmpty(uid: string) {
+  const { count, error } = await supabase
+    .from('recipes')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', uid);
+  if (error) return;
+  if ((count ?? 0) > 0) return;
+  await seedStarterContent(uid);
+}
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<SessionStatus>('loading');
   const [user, setUser] = useState<SessionUser | null>(null);
   const [busy, setBusy] = useState(false);
-  const [serverUrl, setServerUrl] = useState(getApiBaseUrl());
-
-  /** 清空令牌与内存里的数据，下一位登录者不会看到上一位的记录 */
-  const clearLocalSession = useCallback(async () => {
-    setAuthToken(null);
-    resetDataCaches();
-    await clearToken();
-  }, []);
 
   useEffect(() => {
-    let alive = true;
-    void (async () => {
-      // 先恢复用户上次设置的服务器地址，再发第一个网络请求
-      const savedBase = await readApiBaseOverride();
-      if (!alive) return;
-      if (savedBase) {
-        setApiBaseUrl(savedBase);
-        // serverUrl 的初值取在异步恢复之前，这里补一次同步，
-        // 否则界面（登录页脚、我的页）会一直显示默认地址。
-        setServerUrl(getApiBaseUrl());
-      }
-      const token = await readToken();
-      if (!alive) return;
-      if (!token) {
-        setStatus('signedOut');
-        return;
-      }
-      setAuthToken(token);
-      const me = await apiGet<{ user: SessionUser | null }>('/api/auth/me');
-      if (!alive) return;
-      if (me?.user) {
-        setUser(me.user);
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser(toSessionUser(session.user));
         setStatus('signedIn');
-        return;
-      }
-      await clearLocalSession();
-      if (alive) setStatus('signedOut');
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [clearLocalSession]);
-
-  useEffect(() => {
-    setUnauthorizedHandler(() => {
-      void (async () => {
-        await clearLocalSession();
+      } else {
         setUser(null);
         setStatus('signedOut');
-      })();
-    });
-    return () => setUnauthorizedHandler(null);
-  }, [clearLocalSession]);
-
-  const enter = useCallback(async (path: string, body?: unknown): Promise<AuthOutcome> => {
-    setBusy(true);
-    try {
-      const res = await apiPost<AuthResponse>(path, body);
-      if (!res.ok) return { ok: false, error: res.error };
-      if (!res.data.token) return { ok: false, error: '登录状态未能保存，请稍后再试' };
-
-      // 先让内存里的会话生效，再落盘：钥匙串写入失败不该挡住这次进入，
-      // 否则用户会停在原地，而令牌其实已经拿到了。
-      setAuthToken(res.data.token);
-      resetDataCaches();
-      setUser(res.data.user);
-      setStatus('signedIn');
-      try {
-        await writeToken(res.data.token);
-      } catch {
-        // 只影响「重启后免登录」，本次使用不受影响
       }
-      return { ok: true };
-    } catch {
-      return { ok: false, error: '网络异常，请检查网络后重试' };
-    } finally {
-      setBusy(false);
-    }
+    });
+    // 冷启动：先取一次已持久化的会话
+    void supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user) {
+        setUser(toSessionUser(data.session.user));
+        setStatus('signedIn');
+      } else {
+        setStatus('signedOut');
+      }
+    });
+    return () => sub.subscription.unsubscribe();
   }, []);
 
-  const signInDemo = useCallback(() => enter('/api/auth/demo'), [enter]);
+  const enter = useCallback(
+    async (path: 'login' | 'signup', args: Record<string, unknown>): Promise<AuthOutcome> => {
+      setBusy(true);
+      try {
+        const { data, error } =
+          path === 'login'
+            ? await supabase.auth.signInWithPassword({
+                email: args.email as string,
+                password: args.password as string,
+              })
+            : await supabase.auth.signUp({
+                email: args.email as string,
+                password: args.password as string,
+                options: { data: { name: args.name as string } },
+              });
+        if (error) return { ok: false, error: error.message };
+        const authUser = data.user;
+        if (!authUser) return { ok: false, error: '服务没有返回账号，请稍后再试' };
+        // signUp 在开启邮箱确认时没有 session：明确告诉用户下一步
+        if (path === 'signup' && !data.session) {
+          return { ok: false, error: '注册成功：请到邮箱完成确认后再登录' };
+        }
+        setUser(toSessionUser(authUser));
+        setStatus('signedIn');
+        /**
+         * 起步内容在成功进入后保证存在：
+         * 注册路径直接种；登录路径查一遍——邮箱确认后手动登录的账号
+         * 会错过注册时的种子，这里补上。失败不挡进入。
+         */
+        try {
+          if (path === 'signup') {
+            await seedStarterContent(authUser.id);
+          } else {
+            await seedStarterContentIfEmpty(authUser.id);
+          }
+        } catch {
+          // 起步内容只是锦上添花
+        }
+        return { ok: true };
+      } catch {
+        return { ok: false, error: '网络异常，请检查网络后重试' };
+      } finally {
+        setBusy(false);
+      }
+    },
+    []
+  );
 
   const signIn = useCallback(
-    (email: string, password: string) =>
-      enter('/api/auth/login', { email: email.trim(), password }),
+    (email: string, password: string) => enter('login', { email: email.trim(), password }),
     [enter]
   );
 
   const register = useCallback(
     (name: string, email: string, password: string) =>
-      enter('/api/auth/register', { name: name.trim(), email: email.trim(), password }),
+      enter('signup', { name: name.trim(), email: email.trim(), password }),
     [enter]
   );
 
   const signOut = useCallback(async () => {
     setBusy(true);
-    await apiPost('/api/auth/logout');
-    await clearLocalSession();
+    await supabase.auth.signOut();
+    resetDataCaches();
     setUser(null);
     setStatus('signedOut');
     setBusy(false);
-  }, [clearLocalSession]);
-
-  const switchServer = useCallback(async (input: string): Promise<ServerOutcome> => {
-    const trimmed = input.trim();
-    if (!trimmed) {
-      // 恢复默认：清掉覆盖值，回到编译期默认地址
-      setApiBaseUrl(null);
-      await writeApiBaseOverride(null);
-    } else {
-      const effective = setApiBaseUrl(trimmed);
-      if (!effective) return { ok: false, error: '地址需要以 http:// 或 https:// 开头' };
-      await writeApiBaseOverride(effective);
-    }
-    // 令牌与缓存都只对旧服务器有效，一并清空回到入口
-    setAuthToken(null);
-    resetDataCaches();
-    await clearToken();
-    setUser(null);
-    setStatus('signedOut');
-    setServerUrl(getApiBaseUrl());
-    return { ok: true, effective: getApiBaseUrl() };
   }, []);
 
   const value = useMemo<SessionValue>(
-    () => ({
-      status,
-      user,
-      isDemo: user?.email === DEMO_EMAIL,
-      busy,
-      signInDemo,
-      signIn,
-      register,
-      signOut,
-      serverUrl,
-      switchServer,
-    }),
-    [status, user, busy, signInDemo, signIn, register, signOut, serverUrl, switchServer]
+    () => ({ status, user, busy, signIn, register, signOut }),
+    [status, user, busy, signIn, register, signOut]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
