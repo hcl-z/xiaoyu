@@ -83,7 +83,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // 先恢复用户上次设置的服务器地址，再发第一个网络请求
       const savedBase = await readApiBaseOverride();
       if (!alive) return;
-      if (savedBase) setApiBaseUrl(savedBase);
+      if (savedBase) {
+        setApiBaseUrl(savedBase);
+        // serverUrl 的初值取在异步恢复之前，这里补一次同步，
+        // 否则界面（登录页脚、我的页）会一直显示默认地址。
+        setServerUrl(getApiBaseUrl());
+      }
       const token = await readToken();
       if (!alive) return;
       if (!token) {

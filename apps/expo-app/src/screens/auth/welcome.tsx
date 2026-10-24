@@ -14,6 +14,8 @@ import { Icon, type IconName } from '@/components/icon';
 import { Body, Caption, Display, Subhead, Wordmark } from '@/components/text';
 import { useSession } from '@/session';
 
+import { ServerEntry } from './server-entry';
+
 const FEATURES: { icon: IconName; title: string; note: string }[] = [
   { icon: 'book-open', title: '菜谱库', note: '分类、用时、可勾选食材' },
   { icon: 'calendar-check', title: '每日打卡', note: '自由记录与连续天数' },
@@ -107,6 +109,7 @@ export function WelcomeScreen() {
             我已有账号，登录
           </Body>
         </Pressable>
+        <ServerEntry />
       </View>
     </View>
   );

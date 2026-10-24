@@ -12,6 +12,8 @@ import { NavBar } from '@/chrome';
 import { Icon } from '@/components/icon';
 import { Body, Caption, Display } from '@/components/text';
 
+import { ServerEntry } from './server-entry';
+
 export function AuthScaffold({
   title,
   description,
@@ -92,6 +94,7 @@ export function AuthScaffold({
           ) : null}
 
           <View className="mt-8">{footer}</View>
+          <ServerEntry />
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
