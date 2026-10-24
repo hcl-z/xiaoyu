@@ -165,6 +165,8 @@ export const layout = {
   gutter: 20,
   sectionGap: 24,
   safeBottom: 34,
+  /** Tab 根页面滚动到底时，末行要同时让出底部标签栏与右下角打卡键（键底距视口底 100 + 键高 56 + 呼吸 20） */
+  tabBottom: 176,
   navH: 44,
   tabH: 49,
   rowMin: 44,

@@ -249,7 +249,7 @@ export default function RecipesPage() {
         </>
       )}
 
-      <div style={{ height: layout.safeBottom }} aria-hidden />
+      <div style={{ height: layout.tabBottom }} aria-hidden />
     </div>
   );
 }

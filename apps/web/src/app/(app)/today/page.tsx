@@ -541,7 +541,7 @@ export default function TodayPage() {
         </div>
       </div>
 
-      <div style={{ height: layout.safeBottom }} aria-hidden />
+      <div style={{ height: layout.tabBottom }} aria-hidden />
     </div>
   );
 }

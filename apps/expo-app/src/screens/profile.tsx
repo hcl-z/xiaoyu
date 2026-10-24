@@ -231,7 +231,7 @@ export function ProfileScreen() {
               </View>
             }
             title="关于 daily +"
-            value="1.0.0"
+            value={installedVersion}
             accessory="chevron"
             onPress={() => setAbout(true)}
           />
@@ -266,7 +266,7 @@ export function ProfileScreen() {
         </Section>
       </View>
 
-      <Micro className="px-4 text-center">DAILY + 1.0.0 (24)</Micro>
+      <Micro className="px-4 text-center">DAILY + {installedVersion}</Micro>
 
       <Sheet
         open={serverSheet}

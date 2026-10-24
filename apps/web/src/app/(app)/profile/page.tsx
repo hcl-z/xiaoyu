@@ -20,6 +20,8 @@ import { useStats, useTaxonomies } from "@/lib/use-app-data";
 import { useAppModals } from "@/components/app/AppModalProvider";
 import { useSession } from "@/components/app/SessionProvider";
 import { todayISO } from "@/lib/content";
+import { APP_VERSION } from "@/lib/app-version";
+import { layout } from "@/design/tokens";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -35,7 +37,7 @@ export default function ProfilePage() {
   const monthActive = stats.totals.activeDays;
 
   return (
-    <div className="flex flex-col gap-6 pb-8">
+    <div className="flex flex-col gap-6" style={{ paddingBottom: layout.tabBottom }}>
       <NavBar variant="large" largeTitle="我的" subtitle={`已坚持记录 ${stats.streak} 天`} />
 
       <div className="px-5">
@@ -138,7 +140,7 @@ export default function ProfilePage() {
               </span>
             }
             title="关于 daily +"
-            value="1.0.0"
+            value={APP_VERSION}
             accessory="chevron"
             onClick={() => setAbout(true)}
           />
@@ -173,7 +175,7 @@ export default function ProfilePage() {
       </div>
 
       <div className="px-5">
-        <Micro className="block px-4 text-center">DAILY + 1.0.0 (24)</Micro>
+        <Micro className="block px-4 text-center">DAILY + {APP_VERSION}</Micro>
       </div>
 
       <Alert
