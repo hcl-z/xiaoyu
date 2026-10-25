@@ -9,6 +9,14 @@
  *
  * 跨屏刷新沿用进程内事件总线（@/data/bus）：checkins / recipes /
  * taxonomies / auth（登录登出）。
+ *
+ * 请求纪律（性能专项）：
+ * - 同一资源的并发请求合并：多个 hook 实例（标签页常驻 + 弹层）同时
+ *   挂载时，一次 sharedFetch 只发一条网络请求；
+ * - 事件驱动的重拉按 150ms 去抖合并，一次操作连发的多个事件不再放大
+ *   成一串请求；
+ * - 会话缓存播种初始 state：重挂载 / 切页回访先用上一份真数据渲染，
+ *   不再闪骨架屏。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -37,10 +45,20 @@ let sessionTaxonomies: TaxonomyRow[] = [];
 let sessionStats: Stats | null = null;
 const sessionHistories = new Map<string, RecipeHistory>();
 let sessionRange: { key: string; checkins: Checkin[] } | null = null;
+/** 按日的打卡缓存：切回看过的日期或页面重挂载时先给上一份真数据 */
+const sessionDays = new Map<string, Checkin[]>();
+/** 乐观临时 id → 服务器真实 id：合并时把仍在界面上的临时行换成真身，避免重复 */
+const sessionAliases = new Map<number, number>();
 
 /** 兼容列：餐次与份量已从界面移除，表里仍保留，写入时补默认值 */
 const LEGACY_MEAL = '正餐';
 const LEGACY_PORTION = '1 份';
+
+/**
+ * 登录者代际：退出登录时 +1。恢复中的请求完成时发现代际变了就丢弃结果，
+ * 避免上一账号的在途响应落到下一账号的界面上。
+ */
+let dataGeneration = 0;
 
 /** 退出登录时必须清空，下一位登录者不能看到上一位的数据 */
 export function resetDataCaches() {
@@ -50,7 +68,26 @@ export function resetDataCaches() {
   sessionStats = null;
   sessionHistories.clear();
   sessionRange = null;
+  sessionDays.clear();
+  sessionAliases.clear();
+  dataGeneration += 1;
   emitDataEvent({ type: 'auth' });
+}
+
+/* ------------------------------------------------------------------ */
+/* 请求合并：同一资源同一时刻只发一条网络请求                              */
+/* ------------------------------------------------------------------ */
+
+const inflight = new Map<string, Promise<unknown>>();
+
+function sharedFetch<T>(key: string, run: () => Promise<T>): Promise<T> {
+  const existing = inflight.get(key) as Promise<T> | undefined;
+  if (existing) return existing;
+  const request = run().finally(() => {
+    inflight.delete(key);
+  });
+  inflight.set(key, request);
+  return request;
 }
 
 async function requireUid(): Promise<string> {
@@ -65,12 +102,38 @@ function friendlyError(error: { code?: string; message: string }): string {
   return error.message || '操作失败，请稍后再试';
 }
 
+/**
+ * 事件驱动的重拉按 150ms 去抖合并：一次操作常常连发多个事件
+ * （打卡后跟菜谱计数同步、改名连发 taxonomies + recipes），
+ * 逐事件立即重拉会把一次操作放大成一串请求。窗口内同一 (type, day)
+ * 只保留最后一次，不同的事件各自送达一次。
+ */
+const RELOAD_DEBOUNCE_MS = 150;
+
 function useDataEvents(handler: (event: DataEvent) => void) {
   const ref = useRef(handler);
   useEffect(() => {
     ref.current = handler;
   });
-  useEffect(() => subscribeData((event) => ref.current(event)), []);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const pending = new Map<string, DataEvent>();
+    const flush = () => {
+      timer = null;
+      const batch = [...pending.values()];
+      pending.clear();
+      for (const event of batch) ref.current(event);
+    };
+    const unsubscribe = subscribeData((event) => {
+      pending.set(`${event.type}|${event.day ?? ''}`, event);
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(flush, RELOAD_DEBOUNCE_MS);
+    });
+    return () => {
+      if (timer) clearTimeout(timer);
+      unsubscribe();
+    };
+  }, []);
 }
 
 /* ------------------------------------------------------------------ */
@@ -179,23 +242,19 @@ async function syncRecipeCookStats(uid: string, slugs: (string | null | undefine
   const unique = [...new Set(slugs.filter((s): s is string => Boolean(s)))];
   if (unique.length === 0) return;
   for (const slug of unique) {
-    const { data, error } = await supabase
+    // 次数走表头计数、最近一天只取一行：不把整段历史拉回客户端
+    const { count, data, error } = await supabase
       .from('checkins')
-      .select('day')
+      .select('day', { count: 'exact' })
       .eq('user_id', uid)
       .eq('recipe_slug', slug)
-      .eq('planned', false);
-    if (error || !data) continue;
+      .eq('planned', false)
+      .order('day', { ascending: false })
+      .limit(1);
+    if (error || count === null) continue;
     await supabase
       .from('recipes')
-      .update({
-        cooked: data.length,
-        last_cooked_on:
-          data
-            .map((r) => r.day)
-            .sort()
-            .at(-1) ?? null,
-      })
+      .update({ cooked: count, last_cooked_on: data?.[0]?.day ?? null })
       .eq('user_id', uid)
       .eq('slug', slug);
   }
@@ -208,16 +267,26 @@ async function syncRecipeCookStats(uid: string, slugs: (string | null | undefine
 export type RecipeSave = { recipe: Recipe; error?: string };
 
 export function useRecipes() {
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [loading, setLoading] = useState(true);
+  /** 会话缓存播种：重挂载（切页回访、菜谱详情返回）直接先出上一份真数据 */
+  const [recipes, setRecipes] = useState<Recipe[]>(sessionRecipes);
+  const [loading, setLoading] = useState(sessionRecipes.length === 0);
+  /** 最近一次拉取是否失败：空列表 + error 说明「没加载到」而不是「真的是空的」 */
+  const [error, setError] = useState(false);
 
   const load = useCallback(async () => {
-    const { data, error } = await supabase.from('recipes').select('*').order('id');
-    if (!error && data) {
-      const rows = data.map(toRecipe);
-      const slugs = new Set(rows.map((r) => r.slug));
-      setRecipes([...sessionRecipes.filter((r) => !slugs.has(r.slug)), ...rows]);
+    const gen = dataGeneration;
+    const rows = await sharedFetch('recipes', async () => {
+      const { data, error } = await supabase.from('recipes').select('*').order('id');
+      return !error && data
+        ? { rows: (data as RecipeRow[]).map(toRecipe), failed: false }
+        : { rows: null, failed: true };
+    });
+    if (gen !== dataGeneration) return;
+    if (rows.rows) {
+      const slugs = new Set(rows.rows.map((r) => r.slug));
+      setRecipes([...sessionRecipes.filter((r) => !slugs.has(r.slug)), ...rows.rows]);
     }
+    setError(rows.failed);
     setLoading(false);
   }, []);
 
@@ -290,157 +359,201 @@ export function useRecipes() {
     emitDataEvent({ type: 'recipes' });
   }, []);
 
-  return { recipes, loading, addRecipe, updateRecipe, deleteRecipe, refresh: load };
+  return { recipes, loading, error, addRecipe, updateRecipe, deleteRecipe, refresh: load };
 }
 
 /* ------------------------------------------------------------------ */
 /* 打卡                                                                */
 /* ------------------------------------------------------------------ */
 
-export function useCheckins(day: string = todayISO()) {
-  const [checkins, setCheckins] = useState<Checkin[]>([]);
-  const [loading, setLoading] = useState(true);
+/* ------------------------------------------------------------------ */
+/* 打卡写入 · 模块级（界面只负责展示，写入不依赖任何 hook 实例）           */
+/* ------------------------------------------------------------------ */
 
-  const load = useCallback(async () => {
+export type CheckinDraft = Omit<
+  Checkin,
+  'id' | 'time' | 'note' | 'planned' | 'photoPath' | 'meal' | 'portion'
+> & { time?: string; note?: string; planned?: boolean; photoPath?: string | null };
+
+/** 服务器行 + 会话内的乐观值合成一天的列表（乐观值在前，按时间排开） */
+function mergeDayList(day: string, rows: Checkin[]): Checkin[] {
+  // 临时行已保存成功时先换成真身，否则同一条会出现「临时 + 真实」两行
+  const resolved = rows.map((c) => {
+    const realId = sessionAliases.get(c.id);
+    return realId === undefined ? c : { ...c, id: realId };
+  });
+  const ids = new Set(resolved.map((c) => c.id));
+  const extras = sessionCheckins.filter((c) => c.day === day && !ids.has(c.id));
+  return [...extras, ...resolved].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+}
+
+/**
+ * 新增打卡。先落会话乐观值并广播（界面立刻能看到这一条），
+ * 保存完成后再广播一次，让服务器数据把乐观值换下来。
+ */
+export async function addCheckinRecord(draft: CheckinDraft): Promise<Checkin> {
+  const optimistic: Checkin = {
+    id: Date.now(),
+    time: draft.time ?? new Date().toTimeString().slice(0, 5),
+    note: draft.note ?? '',
+    planned: draft.planned ?? false,
+    photoPath: draft.photoPath ?? null,
+    meal: LEGACY_MEAL,
+    portion: LEGACY_PORTION,
+    ...draft,
+  };
+  sessionCheckins = [...sessionCheckins, optimistic];
+  sessionDays.delete(draft.day);
+  emitDataEvent({ type: 'checkins', day: draft.day });
+
+  let saved: Checkin = optimistic;
+  try {
+    const uid = await requireUid();
     const { data, error } = await supabase
       .from('checkins')
+      .insert({ ...checkinColumns(optimistic), user_id: uid })
       .select('*')
-      .eq('day', day)
-      .order('time')
-      .order('id');
-    const rows = !error && data ? data.map(toCheckin) : [];
-    const ids = new Set(rows.map((c) => c.id));
-    const extra = sessionCheckins.filter((c) => c.day === day && !ids.has(c.id));
-    setCheckins([...extra, ...rows].sort((a, b) => (a.time || '').localeCompare(b.time || '')));
+      .single();
+    if (error) throw error;
+    saved = toCheckin(data);
+    sessionAliases.set(optimistic.id, saved.id);
+    // 别名只服务本次会话的合并，不无限增长
+    if (sessionAliases.size > 64) {
+      const oldest = sessionAliases.keys().next().value;
+      if (oldest !== undefined) sessionAliases.delete(oldest);
+    }
+    sessionCheckins = sessionCheckins.filter((c) => c.id !== optimistic.id);
+    sessionCheckins = [...sessionCheckins, saved];
+  } catch {
+    // 乐观值保留：界面照常显示这一条，错误由下一次拉取暴露
+  }
+  emitDataEvent({ type: 'checkins', day: draft.day });
+  void (async () => {
+    const uid = await requireUid().catch(() => null);
+    if (uid) await syncRecipeCookStats(uid, [draft.recipeSlug]);
+  })();
+  return saved;
+}
+
+/** 修改打卡：字段映射见 checkinColumns；改日时新旧两天的缓存都作废 */
+export async function patchCheckinRecord(
+  id: number,
+  patch: Partial<Omit<Checkin, 'id'>>,
+  recordDay: string
+): Promise<Checkin | undefined> {
+  sessionCheckins = sessionCheckins.map((c) => (c.id === id ? { ...c, ...patch } : c));
+  sessionDays.delete(patch.day ?? recordDay);
+  if (patch.day && patch.day !== recordDay) sessionDays.delete(recordDay);
+  const { photoPath, photoId, recipeSlug, ...rest } = patch as Record<string, unknown> & {
+    photoPath?: string | null;
+    photoId?: number;
+    recipeSlug?: string | null;
+  };
+  const columns: Record<string, unknown> = { ...rest };
+  if ('photoPath' in patch) columns.photo_path = photoPath ?? null;
+  if ('recipeSlug' in patch) columns.recipe_slug = recipeSlug ?? null;
+  emitDataEvent({ type: 'checkins', day: patch.day ?? recordDay });
+
+  let saved: Checkin | undefined;
+  try {
+    const uid = await requireUid();
+    const { data, error } = await supabase
+      .from('checkins')
+      .update(columns)
+      .eq('user_id', uid)
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error) throw error;
+    saved = toCheckin(data);
+    sessionCheckins = sessionCheckins.map((c) => (c.id === id ? saved! : c));
+  } catch {
+    // 保持乐观值
+  }
+  emitDataEvent({ type: 'checkins', day: patch.day ?? recordDay });
+  void (async () => {
+    const uid = await requireUid().catch(() => null);
+    if (uid) await syncRecipeCookStats(uid, [recipeSlug ?? undefined]);
+  })();
+  return saved;
+}
+
+/** 删除打卡：顺手清掉 Storage 里的照片与菜谱的「做过」计数 */
+export async function removeCheckinRecord(id: number, recordDay: string): Promise<void> {
+  const target = sessionCheckins.find((c) => c.id === id);
+  sessionCheckins = sessionCheckins.filter((c) => c.id !== id);
+  sessionDays.delete(recordDay);
+  emitDataEvent({ type: 'checkins', day: recordDay });
+  const uid = await requireUid().catch(() => null);
+  if (uid) {
+    await supabase.from('checkins').delete().eq('user_id', uid).eq('id', id);
+    if (target?.recipeSlug) await syncRecipeCookStats(uid, [target.recipeSlug]);
+    if (target?.photoPath) {
+      const { removeImage } = await import('./photos');
+      await removeImage(target.photoPath).catch(() => undefined);
+    }
+  }
+  emitDataEvent({ type: 'checkins', day: recordDay });
+}
+
+/* ------------------------------------------------------------------ */
+/* 打卡 · 按日读取                                                       */
+/* ------------------------------------------------------------------ */
+
+export function useCheckins(day: string = todayISO()) {
+  /** 按日缓存播种：切回看过的日期先用上一份真数据渲染 */
+  const [checkins, setCheckins] = useState<Checkin[]>(() => sessionDays.get(day) ?? []);
+  const [loading, setLoading] = useState(!sessionDays.has(day));
+  /** 最近一次拉取是否失败：空列表 + error 说明「没加载到」而不是「这天真没记」 */
+  const [error, setError] = useState(false);
+  /** 换日时在渲染期把缓存顶上（React 官方的「props 变化时调整 state」写法） */
+  const [seenDay, setSeenDay] = useState(day);
+  if (seenDay !== day) {
+    setSeenDay(day);
+    const cached = sessionDays.get(day);
+    setCheckins(cached ?? []);
+    setLoading(cached === undefined);
+    setError(false);
+  }
+
+  const load = useCallback(async () => {
+    const gen = dataGeneration;
+    const result = await sharedFetch(`checkins:${day}`, async () => {
+      const { data, error } = await supabase
+        .from('checkins')
+        .select('*')
+        .eq('day', day)
+        .order('time')
+        .order('id');
+      return !error && data
+        ? { rows: (data as CheckinRow[]).map(toCheckin), failed: false }
+        : { rows: null, failed: true };
+    });
+    if (gen !== dataGeneration) return;
+    if (result.rows) {
+      const next = mergeDayList(day, result.rows);
+      sessionDays.set(day, next);
+      setCheckins(next);
+    }
+    setError(result.failed);
     setLoading(false);
   }, [day]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(true);
-      setCheckins([]);
-      void load();
-    }, 0);
+    const timer = setTimeout(() => void load(), 0);
     return () => clearTimeout(timer);
-  }, [day, load]);
+  }, [load]);
 
   useDataEvents((event) => {
     if (event.type === 'auth') void load();
-    if (event.type === 'checkins' && (!event.day || event.day === day)) void load();
+    if (event.type === 'checkins' && (!event.day || event.day === day)) {
+      // 先把会话内的乐观值并进来（刚记的那一笔立刻可见），再让网络刷新兜底
+      setCheckins((list) => mergeDayList(day, list));
+      void load();
+    }
   });
 
-  const addCheckin = useCallback(
-    async (
-      draft: Omit<
-        Checkin,
-        'id' | 'time' | 'note' | 'planned' | 'photoPath' | 'meal' | 'portion'
-      > & { time?: string; note?: string; planned?: boolean; photoPath?: string | null }
-    ) => {
-      const optimistic: Checkin = {
-        id: Date.now(),
-        time: draft.time ?? new Date().toTimeString().slice(0, 5),
-        note: draft.note ?? '',
-        planned: draft.planned ?? false,
-        photoPath: draft.photoPath ?? null,
-        meal: LEGACY_MEAL,
-        portion: LEGACY_PORTION,
-        ...draft,
-      };
-      sessionCheckins = [...sessionCheckins, optimistic];
-      if (draft.day === day) setCheckins((list) => [...list, optimistic]);
-
-      let saved: Checkin = optimistic;
-      try {
-        const uid = await requireUid();
-        const { data, error } = await supabase
-          .from('checkins')
-          .insert({ ...checkinColumns(optimistic), user_id: uid })
-          .select('*')
-          .single();
-        if (error) throw error;
-        saved = toCheckin(data);
-        sessionCheckins = sessionCheckins.filter((c) => c.id !== optimistic.id);
-        sessionCheckins = [...sessionCheckins, saved];
-      } catch {
-        // 乐观值保留：界面照常显示这一条，错误由下一次拉取暴露
-      }
-      if (draft.day === day) {
-        setCheckins((list) => list.map((c) => (c.id === optimistic.id ? saved : c)));
-      }
-      emitDataEvent({ type: 'checkins', day: draft.day });
-      void (async () => {
-        const uid = await requireUid().catch(() => null);
-        if (uid) await syncRecipeCookStats(uid, [draft.recipeSlug]);
-      })();
-      return saved;
-    },
-    [day]
-  );
-
-  const patchCheckin = useCallback(
-    async (id: number, patch: Partial<Omit<Checkin, 'id'>>, recordDay: string = day) => {
-      sessionCheckins = sessionCheckins.map((c) => (c.id === id ? { ...c, ...patch } : c));
-      if (recordDay === day) {
-        setCheckins((list) => list.map((c) => (c.id === id ? { ...c, ...patch } : c)));
-      }
-      const { photoPath, photoId, recipeSlug, ...rest } = patch as Record<string, unknown> & {
-        photoPath?: string | null;
-        photoId?: number;
-        recipeSlug?: string | null;
-      };
-      const columns: Record<string, unknown> = { ...rest };
-      if ('photoPath' in patch) columns.photo_path = photoPath ?? null;
-      if ('recipeSlug' in patch) columns.recipe_slug = recipeSlug ?? null;
-
-      let saved: Checkin | undefined;
-      try {
-        const uid = await requireUid();
-        const { data, error } = await supabase
-          .from('checkins')
-          .update(columns)
-          .eq('user_id', uid)
-          .eq('id', id)
-          .select('*')
-          .single();
-        if (error) throw error;
-        saved = toCheckin(data);
-        sessionCheckins = sessionCheckins.map((c) => (c.id === id ? saved! : c));
-        if (recordDay === day) {
-          setCheckins((list) => list.map((c) => (c.id === id ? saved! : c)));
-        }
-      } catch {
-        // 保持乐观值
-      }
-      emitDataEvent({ type: 'checkins', day: patch.day ?? recordDay });
-      void (async () => {
-        const uid = await requireUid().catch(() => null);
-        if (uid) await syncRecipeCookStats(uid, [recipeSlug ?? undefined]);
-      })();
-      return saved;
-    },
-    [day]
-  );
-
-  const removeCheckin = useCallback(
-    async (id: number, recordDay: string = day) => {
-      const target = sessionCheckins.find((c) => c.id === id);
-      sessionCheckins = sessionCheckins.filter((c) => c.id !== id);
-      if (recordDay === day) setCheckins((list) => list.filter((c) => c.id !== id));
-      const uid = await requireUid().catch(() => null);
-      if (uid) {
-        await supabase.from('checkins').delete().eq('user_id', uid).eq('id', id);
-        if (target?.recipeSlug) await syncRecipeCookStats(uid, [target.recipeSlug]);
-        if (target?.photoPath) {
-          const { removeImage } = await import('./photos');
-          await removeImage(target.photoPath).catch(() => undefined);
-        }
-      }
-      emitDataEvent({ type: 'checkins', day: recordDay });
-    },
-    [day]
-  );
-
-  return { checkins, loading, addCheckin, patchCheckin, removeCheckin, refresh: load };
+  return { checkins, loading, error, refresh: load };
 }
 
 /** 一个日期区间内的记录；今日页用它拉「接下来的安排」 */
@@ -452,18 +565,22 @@ export function useCheckinRange(from: string, to: string) {
   const [loading, setLoading] = useState(sessionRange?.key !== key);
 
   const load = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('checkins')
-      .select('*')
-      .gte('day', from)
-      .lte('day', to)
-      .order('day')
-      .order('time')
-      .order('id');
-    if (!error && data) {
-      const next = data.map(toCheckin);
-      sessionRange = { key, checkins: next };
-      setCheckins(next);
+    const gen = dataGeneration;
+    const rows = await sharedFetch(`checkin-range:${key}`, async () => {
+      const { data, error } = await supabase
+        .from('checkins')
+        .select('*')
+        .gte('day', from)
+        .lte('day', to)
+        .order('day')
+        .order('time')
+        .order('id');
+      return !error && data ? (data as CheckinRow[]).map(toCheckin) : null;
+    });
+    if (gen !== dataGeneration) return;
+    if (rows) {
+      sessionRange = { key, checkins: rows };
+      setCheckins(rows);
     }
     setLoading(false);
   }, [from, to, key]);
@@ -499,11 +616,9 @@ function streakFrom(active: Set<string>): number {
 
 const STATS_DAYS = 28;
 
-export function useStats() {
-  const [stats, setStats] = useState<Stats>(sessionStats ?? EMPTY_STATS);
-  const [loading, setLoading] = useState(sessionStats === null);
-
-  const load = useCallback(async () => {
+/** 统计一次拉齐（三条子查询并行）；今日页与我的页共享同一次网络请求 */
+async function loadStats(): Promise<Stats> {
+  return sharedFetch('stats', async () => {
     const today = todayISO();
     const [doneDaysRes, favoritesRes, plannedRes] = await Promise.all([
       supabase
@@ -537,6 +652,18 @@ export function useStats() {
       },
     };
     sessionStats = next;
+    return next;
+  });
+}
+
+export function useStats() {
+  const [stats, setStats] = useState<Stats>(sessionStats ?? EMPTY_STATS);
+  const [loading, setLoading] = useState(sessionStats === null);
+
+  const load = useCallback(async () => {
+    const gen = dataGeneration;
+    const next = await loadStats();
+    if (gen !== dataGeneration) return;
     setStats(next);
     setLoading(false);
   }, []);
@@ -567,32 +694,41 @@ export function useTaxonomies() {
   const [loading, setLoading] = useState(sessionTaxonomies.length === 0);
 
   const load = useCallback(async () => {
-    const uid = await supabase.auth.getSession().then(({ data }) => data.session?.user.id);
-    if (!uid) {
+    const gen = dataGeneration;
+    const next = await sharedFetch('taxonomies', async () => {
+      const uid = await supabase.auth.getSession().then(({ data }) => data.session?.user.id);
+      if (!uid) return { signedIn: false, rows: null as TaxonomyRow[] | null };
+      const { data, error } = await supabase
+        .from('taxonomies')
+        .select('*')
+        .eq('user_id', uid)
+        .order('kind')
+        .order('sort_order')
+        .order('id');
+      if (error || !data) return { signedIn: true, rows: null };
+      return {
+        signedIn: true,
+        rows: data.map((row) => ({
+          id: row.id as number,
+          kind: row.kind as string,
+          name: row.name as string,
+          sort_order: row.sort_order as number,
+        })),
+      };
+    });
+    if (gen !== dataGeneration) return;
+    if (!next.signedIn) {
       sessionTaxonomies = [];
       setRows([]);
       setLoading(false);
       return;
     }
-    const { data, error } = await supabase
-      .from('taxonomies')
-      .select('*')
-      .eq('user_id', uid)
-      .order('kind')
-      .order('sort_order')
-      .order('id');
-    if (error || !data) {
+    if (!next.rows) {
       setLoading(false);
       return;
     }
-    const next = data.map((row) => ({
-      id: row.id,
-      kind: row.kind,
-      name: row.name,
-      sort_order: row.sort_order,
-    }));
-    sessionTaxonomies = next;
-    setRows(next);
+    sessionTaxonomies = next.rows;
+    setRows(next.rows);
     setLoading(false);
   }, []);
 

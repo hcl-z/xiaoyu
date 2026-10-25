@@ -97,7 +97,13 @@ export function Alert({
   );
 
   return (
-    <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={onCancel}>
+    <Modal
+      visible
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onCancel}>
       {content}
     </Modal>
   );

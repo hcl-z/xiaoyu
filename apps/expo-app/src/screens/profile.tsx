@@ -3,7 +3,7 @@
  * 退出登录走 Alert 确认，确认后清空本地会话。
  */
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { NavBar, Sheet } from '@/chrome';
@@ -13,7 +13,7 @@ import { Badge, ListRow, Section } from '@/components/surfaces';
 import { Heatmap, HeatmapLegend, Stat } from '@/components/data';
 import { Icon } from '@/components/icon';
 import { FieldError } from '@/components/inputs';
-import { Body, Caption, Metric, Micro } from '@/components/text';
+import { Body, Caption, Metric } from '@/components/text';
 import {
   checkForUpdates,
   getUpdatesState,
@@ -26,17 +26,32 @@ import {
 import { useStats, useTaxonomies } from '@/data/store';
 import { todayISO } from '@/domain/date';
 import { useSession } from '@/session';
+import { color } from '@/theme';
 
 import { useTabScreenPadding } from './layout-metrics';
 
 export function ProfileScreen() {
   const router = useRouter();
   const { paddingTop, paddingBottom } = useTabScreenPadding();
-  const { stats, loading } = useStats();
-  const { categories, tags, loading: taxonomiesLoading } = useTaxonomies();
+  const { stats, loading, refresh: refreshStats } = useStats();
+  const {
+    categories,
+    tags,
+    loading: taxonomiesLoading,
+    refresh: refreshTaxonomies,
+  } = useTaxonomies();
   const { user, busy, signOut } = useSession();
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [updateSheet, setUpdateSheet] = useState(false);
+
+  /* 下拉刷新：统计与分类标签一起拉新 */
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = () => {
+    setRefreshing(true);
+    void Promise.all([refreshStats(), refreshTaxonomies()])
+      .catch(() => undefined)
+      .finally(() => setRefreshing(false));
+  };
 
   // 更新模块的状态是模块级单例，订阅变化重渲染这一页
   const [, setUpdateTick] = useState(0);
@@ -52,7 +67,16 @@ export function ProfileScreen() {
       className="bg-paper"
       style={{ flex: 1 }}
       contentContainerStyle={{ paddingTop, paddingBottom, rowGap: 24 }}
-      showsVerticalScrollIndicator={false}>
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={color.accent}
+          colors={[color.accent]}
+          progressBackgroundColor={color.card}
+        />
+      }>
       <NavBar variant="large" largeTitle="我的" subtitle={`已坚持记录 ${stats.streak} 天`} />
 
       <View className="px-5">
@@ -202,11 +226,11 @@ export function ProfileScreen() {
         </Section>
       </View>
 
-      <Micro className="px-4 text-center">DAILY + {installedVersion}</Micro>
-
       <Sheet
         open={updateSheet}
         onClose={() => setUpdateSheet(false)}
+        /* 固定停靠高度：动态测高在 Android 上会把面板压得又矮又乱 */
+        snapPoints={['55%']}
         title="软件更新"
         subtitle={`当前版本 ${installedVersion}`}
         action={
@@ -240,7 +264,11 @@ export function ProfileScreen() {
                     : 'APK'}
                 </Badge>
               </View>
-              <Caption>{updateState.latest.notes}</Caption>
+              {updateState.latest.notes ? (
+                <Caption className="leading-relaxed">{updateState.latest.notes}</Caption>
+              ) : (
+                <Caption tone="muted">更新说明见 GitHub 发布页。</Caption>
+              )}
               <Button label="下载并安装" onPress={() => void installUpdate(updateState.latest!)}>
                 下载并安装
               </Button>

@@ -5,7 +5,8 @@
  * 保存结果与打卡弹层同一套语义：成功打勾，失败给叉并允许原地重试。
  */
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Modal, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -145,7 +146,7 @@ function PhotoCard({
               className="bg-fill aspect-square w-full overflow-hidden">
               <Image
                 source={{ uri: photo.uri }}
-                resizeMode="cover"
+                contentFit="cover"
                 style={{ width: '100%', height: '100%' }}
               />
             </Pressable>

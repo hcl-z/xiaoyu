@@ -6,10 +6,15 @@
  * 所以这里把「取不到图」收敛成一个显式状态：失败就换调用方给的占位，
  * 界面形状不塌，也不必每个用到图的地方各写一遍 onError。
  *
+ * 底层是 expo-image：内存 + 磁盘双级缓存（回访不再重新下载），
+ * 缩略图按目标尺寸降采样解码（48px 的行图不再解码整张 1600px 原图），
+ * 自带 120ms 交叉淡入，图到位前透出底色而不是闪一下。
+ *
  * src 的取值：Storage 路径（转公共 URL）、本地资源 id、空（占位）。
  */
 import { useState, type ReactNode } from 'react';
-import { Image, View, type ImageStyle, type StyleProp, type ViewStyle } from 'react-native';
+import { Image } from 'expo-image';
+import { View, type ImageStyle, type StyleProp, type ViewStyle } from 'react-native';
 
 import { imageSource } from '@/data/photos';
 
@@ -70,6 +75,9 @@ export function RemoteImage({
     <Image
       source={resolved}
       style={style}
+      contentFit="cover"
+      cachePolicy="memory-disk"
+      transition={120}
       accessibilityLabel={accessibilityLabel}
       onError={() => {
         setFailed(true);

@@ -7,11 +7,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { layout } from '@/theme';
 
 /**
- * 悬浮按钮真正侵入滚动区的深度：标签栏上缘之下还有 16px 间距 + 56px 键体，
- * 滚动区本身止于标签栏上缘，所以底部让位只算这一段（再加 12px 呼吸），
- * 不再叠加标签栏高度——那会把页面底部顶出一大块空白。
+ * 悬浮按钮真正侵入滚动区的深度：滚动区本身止于标签栏上缘，
+ * FAB 底缘悬在标签栏上缘之上 20px，再加 56px 键体——底部让位就这么多，
+ * 不再叠加标签栏高度，也不再额外加呼吸（那会在页面底部顶出一大块空白）。
  */
-const FAB_CLEARANCE = 56 + 16 + 12;
+const FAB_BOTTOM_GAP = 20;
+const FAB_SIZE = 56;
+const FAB_CLEARANCE = FAB_SIZE + FAB_BOTTOM_GAP;
 
 export function useTabScreenPadding() {
   const insets = useSafeAreaInsets();

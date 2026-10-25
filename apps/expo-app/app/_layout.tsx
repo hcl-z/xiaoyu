@@ -1,14 +1,32 @@
+import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import '../global.css';
 
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import * as SplashScreen from 'expo-splash-screen';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { CheckinProvider } from '@/chrome/checkin';
-import { SessionProvider } from '@/session';
+import { SessionProvider, useSession } from '@/session';
 import { color } from '@/theme';
+
+/**
+ * 冷启动先钉住系统启动屏：会话从钥匙串恢复需要一点时间，
+ * 这期间不露出白纸——恢复出结果（进入产品或欢迎页）再收起启动屏。
+ */
+SplashScreen.preventAutoHideAsync().catch(() => {
+  // Web 或启动屏已收起时静默
+});
+
+function SplashGate() {
+  const { status } = useSession();
+  useEffect(() => {
+    if (status !== 'loading') void SplashScreen.hideAsync().catch(() => undefined);
+  }, [status]);
+  return null;
+}
 
 /** 全屏任务页：交给 ModalRoute 呈现，路由本身保持透明、不播系统动画 */
 const MODAL_ROUTE_OPTIONS = {
@@ -27,6 +45,7 @@ export default function RootLayout() {
           <SessionProvider>
             {/* 打卡弹层挂在根部：标签页与推入页都能唤起同一个弹层 */}
             <CheckinProvider>
+              <SplashGate />
               <Stack
                 screenOptions={{
                   headerShown: false,

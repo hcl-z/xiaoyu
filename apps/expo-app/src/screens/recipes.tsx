@@ -3,7 +3,7 @@
  * 大图只在默认浏览态出现；一旦筛选，结果平铺，避免首个结果被莫名放大。
  */
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { NavBar } from '@/chrome';
@@ -18,17 +18,26 @@ import { useRecipes, useTaxonomies } from '@/data/store';
 import type { Recipe } from '@/data/types';
 import { relativeDayLabel } from '@/domain/date';
 import { CrossFade, SwapIn } from '@/motion';
-import { elevationStyle } from '@/theme';
+import { color, elevationStyle } from '@/theme';
 
 import { useTabScreenPadding } from './layout-metrics';
 
 export function RecipesScreen() {
   const router = useRouter();
   const { paddingTop, paddingBottom } = useTabScreenPadding();
-  const { recipes, loading } = useRecipes();
+  const { recipes, loading, error, refresh } = useRecipes();
   const { categories } = useTaxonomies();
   const [query, setQuery] = useState('');
   const [cat, setCat] = useState('全部');
+
+  /* 下拉刷新：菜谱与分类标签一起拉新 */
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = () => {
+    setRefreshing(true);
+    void refresh()
+      .catch(() => undefined)
+      .finally(() => setRefreshing(false));
+  };
 
   /** 分类来自「我的 › 分类管理」；另有「全部」与「收藏」筛选项 */
   const filters = useMemo(() => ['全部', ...categories.map((c) => c.name), '收藏'], [categories]);
@@ -69,7 +78,16 @@ export function RecipesScreen() {
       className="bg-paper"
       style={{ flex: 1 }}
       contentContainerStyle={{ paddingTop, paddingBottom }}
-      showsVerticalScrollIndicator={false}>
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={color.accent}
+          colors={[color.accent]}
+          progressBackgroundColor={color.card}
+        />
+      }>
       <NavBar
         variant="large"
         largeTitle="菜谱"
@@ -129,14 +147,28 @@ export function RecipesScreen() {
               <View className="px-5">
                 <Section>
                   {recipes.length === 0 && !query.trim() && activeCat === '全部' ? (
-                    <EmptyState
-                      icon={<Icon name="book-open" size="xl" tone="accent" />}
-                      title="菜谱库还是空的"
-                      description="从第一道常做的菜开始建：名字、用料、步骤，几分钟就好。"
-                      action={
-                        <Button onPress={() => router.push('/recipes/new')}>新建第一道菜</Button>
-                      }
-                    />
+                    error ? (
+                      /* 拉取失败不是「库是空的」：给失败态与重试，别诱导人去新建 */
+                      <EmptyState
+                        icon={<Icon name="circle-alert" size="xl" tone="danger" />}
+                        title="没能加载菜谱库"
+                        description="网络不太顺，内容没有取到；下拉或点这里再试一次。"
+                        action={
+                          <Button size="sm" onPress={() => void refresh()}>
+                            重试
+                          </Button>
+                        }
+                      />
+                    ) : (
+                      <EmptyState
+                        icon={<Icon name="book-open" size="xl" tone="accent" />}
+                        title="菜谱库还是空的"
+                        description="从第一道常做的菜开始建：名字、用料、步骤，几分钟就好。"
+                        action={
+                          <Button onPress={() => router.push('/recipes/new')}>新建第一道菜</Button>
+                        }
+                      />
+                    )
                   ) : (
                     <EmptyState
                       icon={<Icon name="search" size="xl" tone="accent" />}

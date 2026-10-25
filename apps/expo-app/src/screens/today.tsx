@@ -6,19 +6,19 @@
  * 今天在对应位置插一条「现在」标线。安排 chips 只在看今天时出现。
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Alert, NavBar } from '@/chrome';
 import { useCheckinSheet } from '@/chrome/checkin';
 import { Button } from '@/components/button';
 import { Icon } from '@/components/icon';
-import { Badge, Card, SectionHeader, Skeleton } from '@/components/surfaces';
+import { RemoteImage } from '@/components/remote-image';
+import { Badge, Card, EmptyState, Section, SectionHeader, Skeleton } from '@/components/surfaces';
 import { Pill } from '@/components/controls';
 import { Body, Caption, Micro, Subhead } from '@/components/text';
 import { useCheckinRange, useCheckins, useStats } from '@/data/store';
 import type { Checkin } from '@/data/types';
-import { imageSource } from '@/data/photos';
 import { mealOfTime, type MealGroup } from '@/domain/meal';
 import { WEEKDAYS, parseDay, shiftDay, todayISO, weekOf } from '@/domain/date';
 import { SwapIn, useSequenceDirection } from '@/motion';
@@ -62,7 +62,7 @@ export function TodayScreen() {
   const day = dayOverride ?? requestedDay ?? today;
 
   const history = useCheckins(day);
-  const { stats } = useStats();
+  const { stats, refresh: refreshStats } = useStats();
   const { user } = useSession();
   /**
    * 整个可安排区间（今天到 PLAN_HORIZON）的安排。
@@ -70,6 +70,15 @@ export function TodayScreen() {
    * 「接下来的安排」chips 再按未来七天截取。
    */
   const plannedRange = useCheckinRange(shiftDay(today, 1), maxDay);
+
+  /* 下拉刷新：当天记录、安排区间、统计一次拉齐 */
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = () => {
+    setRefreshing(true);
+    void Promise.all([history.refresh(), plannedRange.refresh(), refreshStats()])
+      .catch(() => undefined)
+      .finally(() => setRefreshing(false));
+  };
 
   const setActiveDay = sheet.setActiveDay;
 
@@ -223,7 +232,16 @@ export function TodayScreen() {
       className="bg-paper"
       style={{ flex: 1 }}
       contentContainerStyle={{ paddingTop, paddingBottom, rowGap: 24 }}
-      showsVerticalScrollIndicator={false}>
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={color.accent}
+          colors={[color.accent]}
+          progressBackgroundColor={color.card}
+        />
+      }>
       <NavBar
         variant="large"
         largeTitle={
@@ -313,6 +331,22 @@ export function TodayScreen() {
                 ? '到那天在这里确认，才计入打卡与制作次数'
                 : '按用餐时间排序 · 轻点记录可修改或删除'}
             </Caption>
+          </View>
+        ) : history.error && !showSkeleton ? (
+          /* 拉取失败不是「这天真没记」：给一条明确的失败态与重试出口 */
+          <View className="px-5">
+            <Section>
+              <EmptyState
+                icon={<Icon name="circle-alert" size="xl" tone="danger" />}
+                title="没能加载这一天"
+                description="网络不太顺，内容没有取到；下拉或点这里再试一次。"
+                action={
+                  <Button size="sm" onPress={() => void history.refresh()}>
+                    重试
+                  </Button>
+                }
+              />
+            </Section>
           </View>
         ) : (
           /* 空状态：把「现在」的位置让给一句邀请 */
@@ -408,8 +442,6 @@ function MealRow({
   onConfirm: () => void;
   onPress: () => void;
 }) {
-  const photo = imageSource(item.photoPath);
-
   return (
     <Pressable
       accessibilityRole="button"
@@ -425,10 +457,9 @@ function MealRow({
       <View
         className="flex-row items-center"
         style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
-        {photo ? (
-          <Image
-            source={photo}
-            resizeMode="cover"
+        {item.photoPath ? (
+          <RemoteImage
+            src={item.photoPath}
             accessibilityLabel="打卡照片"
             style={{
               width: 56,

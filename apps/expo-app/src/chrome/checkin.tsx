@@ -17,7 +17,7 @@ import { Pressable, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { Icon } from '@/components/icon';
-import { useCheckins } from '@/data/store';
+import { addCheckinRecord, patchCheckinRecord } from '@/data/store';
 import type { Checkin } from '@/data/types';
 import { todayISO } from '@/domain/date';
 import { pickPhoto, uploadPhoto, type PreparedPhoto, type PhotoSource } from '@/photo';
@@ -50,7 +50,7 @@ export function useCheckinSheet(): CheckinCtx {
 
 export function CheckinProvider({ children }: { children: ReactNode }) {
   const today = todayISO();
-  const { addCheckin, patchCheckin } = useCheckins();
+  /* 写入走模块函数：根部不再挂 useCheckins，省掉一次与今日页重复的拉取 */
 
   const [activeDay, setActiveDay] = useState(today);
 
@@ -112,7 +112,7 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
     try {
       const photoPath = await uploadPhoto(photo, 'checkins');
       setPhotoSaved(true);
-      await addCheckin({
+      await addCheckinRecord({
         day: photoDay,
         // 文案可空，照片本身就是内容
         title: photoCaption.trim() || '照片记录',
@@ -131,7 +131,7 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
     } finally {
       setPhotoBusy(false);
     }
-  }, [addCheckin, canSavePhoto, photo, photoCaption, photoDay]);
+  }, [canSavePhoto, photo, photoCaption, photoDay]);
 
   const openCheckin = useCallback(
     (opts?: OpenOpts) => {
@@ -148,16 +148,13 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
   const close = useCallback(() => setOpen(false), []);
 
   /** 计划 → 已吃：只翻 planned 一个字段，时间改为当下 */
-  const confirmPlan = useCallback(
-    async (record: Checkin) => {
-      await patchCheckin(
-        record.id,
-        { planned: false, time: new Date().toTimeString().slice(0, 5) },
-        record.day
-      );
-    },
-    [patchCheckin]
-  );
+  const confirmPlan = useCallback(async (record: Checkin) => {
+    await patchCheckinRecord(
+      record.id,
+      { planned: false, time: new Date().toTimeString().slice(0, 5) },
+      record.day
+    );
+  }, []);
 
   const value = useMemo<CheckinCtx>(
     () => ({ activeDay, setActiveDay, openCheckin, openPhotoCheckin, confirmPlan }),

@@ -10,15 +10,20 @@
  * 整个弹层由本组件持有：每次打开都是全新一届（key 换届），状态不用手动复位。
  */
 import { useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, TextInput, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
 import { Skeleton } from '@/components/surfaces';
 import { Body, Caption, Micro } from '@/components/text';
 import { Button } from '@/components/button';
 import { TextArea } from '@/components/inputs';
-import { imageSource } from '@/data/photos';
-import { useCheckins, useRecipes } from '@/data/store';
+import { RemoteImage } from '@/components/remote-image';
+import {
+  addCheckinRecord,
+  patchCheckinRecord,
+  removeCheckinRecord,
+  useRecipes,
+} from '@/data/store';
 import type { Checkin, Recipe } from '@/data/types';
 import { todayISO } from '@/domain/date';
 import {
@@ -59,7 +64,6 @@ export function CheckinComposer({
   onClose: () => void;
 }) {
   const today = todayISO();
-  const { addCheckin, patchCheckin, removeCheckin } = useCheckins();
   const { recipes, loading: recipesLoading } = useRecipes();
 
   const isPlan = existing ? existing.planned : day > today;
@@ -121,7 +125,7 @@ export function CheckinComposer({
     void (async () => {
       try {
         if (existing) {
-          await patchCheckin(
+          await patchCheckinRecord(
             existing.id,
             {
               day,
@@ -134,7 +138,7 @@ export function CheckinComposer({
             existing.day
           );
         } else {
-          await addCheckin({
+          await addCheckinRecord({
             day,
             time,
             title: title.trim(),
@@ -169,7 +173,11 @@ export function CheckinComposer({
     if (!existing) return;
     setPhase('success');
     setResult({ tone: 'success', title: '已记为吃过' });
-    void patchCheckin(existing.id, { planned: false, time: dateToTime(new Date()) }, existing.day)
+    void patchCheckinRecord(
+      existing.id,
+      { planned: false, time: dateToTime(new Date()) },
+      existing.day
+    )
       .catch(() => {
         setResult({ tone: 'failure', title: '没能确认', caption: '网络不太稳，再试一次' });
         setTimeout(() => {
@@ -190,7 +198,7 @@ export function CheckinComposer({
       tone: 'success',
       title: existing.planned ? '已取消这条计划' : '已删除这条记录',
     });
-    await removeCheckin(existing.id, day);
+    await removeCheckinRecord(existing.id, day);
     setTimeout(() => onClose(), 500);
   };
 
@@ -218,9 +226,8 @@ export function CheckinComposer({
         <View style={{ rowGap: 12, paddingBottom: 12 }}>
           {existing?.photoPath ? (
             <View className="border-hair/70 bg-card rounded-group overflow-hidden border">
-              <Image
-                source={imageSource(existing.photoPath) ?? { uri: '' }}
-                resizeMode="cover"
+              <RemoteImage
+                src={existing.photoPath}
                 accessibilityLabel="这条记录的照片"
                 style={{ width: '100%', height: 168, backgroundColor: '#EBEBF0' }}
               />

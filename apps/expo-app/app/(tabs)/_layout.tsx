@@ -35,13 +35,17 @@ export default function TabsLayout() {
         <Tabs.Screen name="recipes" options={{ title: '菜谱' }} />
         <Tabs.Screen name="profile" options={{ title: '我的' }} />
       </Tabs>
-      <CheckinLayer bottomOffset={tabBarHeight + 28} />
+      <CheckinLayer bottomOffset={tabBarHeight + 20} />
       <Alert
         open={updateOffer !== null}
         title="发现新版本"
         message={
           updateOffer
-            ? `新版本 ${updateOffer.version} 已发布，更新包约 ${(updateOffer.size / 1024 / 1024).toFixed(1)} MB。`
+            ? `新版本 ${updateOffer.version} 已发布${
+                updateOffer.size > 0
+                  ? `，更新包约 ${(updateOffer.size / 1024 / 1024).toFixed(1)} MB`
+                  : ''
+              }。`
             : ''
         }
         cancelLabel="稍后提醒"
