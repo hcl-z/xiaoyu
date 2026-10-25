@@ -166,13 +166,13 @@ export function TodayHero({
                       {WEEKDAYS[date.getDay()]}
                     </Body>
                     <View
-                      className="h-[38px] w-[38px] items-center justify-center rounded-full"
+                      className="h-[38px] w-[38px] items-center justify-center"
                       style={
                         selected
-                          ? { backgroundColor: color.accent }
+                          ? { backgroundColor: color.accent, borderRadius: 19 }
                           : isTodayCell
-                            ? { borderWidth: 1.5, borderColor: color.accent }
-                            : undefined
+                            ? { borderWidth: 1.5, borderColor: color.accent, borderRadius: 19 }
+                            : { borderRadius: 19 }
                       }>
                       <Body
                         tabular

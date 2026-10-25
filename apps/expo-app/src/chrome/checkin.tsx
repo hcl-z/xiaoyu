@@ -21,7 +21,7 @@ import { useCheckins } from '@/data/store';
 import type { Checkin } from '@/data/types';
 import { todayISO } from '@/domain/date';
 import { pickPhoto, uploadPhoto, type PreparedPhoto, type PhotoSource } from '@/photo';
-import { motion as mt } from '@/theme';
+import { elevationStyle, motion as mt } from '@/theme';
 
 import { PhotoCheckinModal } from './photo-checkin';
 import { CheckinComposer } from './checkin-composer';
@@ -300,7 +300,7 @@ export function CheckinLayer({ bottomOffset }: { bottomOffset: number }) {
                 item.onPress();
               }}
               className="bg-indigo active:bg-indigo-deep absolute h-12 w-12 items-center justify-center rounded-full"
-              style={{ right: item.right, bottom: item.bottom }}>
+              style={[elevationStyle.float, { right: item.right, bottom: item.bottom }]}>
               <Icon name={item.icon} size="lg" tone="invert" />
             </Pressable>
           ))}
@@ -313,7 +313,10 @@ export function CheckinLayer({ bottomOffset }: { bottomOffset: number }) {
         accessibilityState={{ expanded }}
         onPress={() => setMenuOpen((v) => !v)}
         className="bg-indigo active:bg-indigo-deep absolute items-center justify-center rounded-full"
-        style={{ right: FAB_RIGHT, bottom: bottomOffset, width: FAB_SIZE, height: FAB_SIZE }}>
+        style={[
+          elevationStyle.fab,
+          { right: FAB_RIGHT, bottom: bottomOffset, width: FAB_SIZE, height: FAB_SIZE },
+        ]}>
         <Animated.View style={iconStyle}>
           <Icon name="plus" size="xl" tone="invert" strokeWidth={2.4} />
         </Animated.View>

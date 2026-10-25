@@ -45,9 +45,10 @@ export type SheetProps = {
   children: ReactNode;
   footer?: ReactNode;
   /** 停靠点；省略时按内容自适应高度，最高不超过安全区之下 90% */
-  snapPoints?: (string | number)[];
   /** 关闭动画结束后的回调 */
   onDismiss?: () => void;
+  /** 定高档（如 '50%'）；不传则贴合内容高度 */
+  snapPoints?: (string | number)[];
 };
 
 /** 抓手：库的 handleComponent，落在面板上缘正中 */
@@ -210,6 +211,7 @@ export function Sheet({
     <BottomSheetModal
       ref={ref}
       snapPoints={snapPoints}
+      enableDynamicSizing={snapPoints === undefined}
       enableDismissOnClose
       enablePanDownToClose
       enableOverDrag={false}

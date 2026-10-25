@@ -10,7 +10,7 @@
  * 跨屏刷新沿用进程内事件总线（@/data/bus）：checkins / recipes /
  * taxonomies / auth（登录登出）。
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { shiftDay, todayISO } from '@/domain/date';
 
@@ -30,6 +30,13 @@ import {
 /** 本次会话里刚写入的记录：切换页面不会丢，也不用等下一次拉取 */
 let sessionCheckins: Checkin[] = [];
 let sessionRecipes: Recipe[] = [];
+/** 分类与标签的会话缓存：我的页已经拉过，点进管理页时直接可用，弹层不再闪白 */
+type TaxonomyRow = { id: number; kind: string; name: string; sort_order: number };
+let sessionTaxonomies: TaxonomyRow[] = [];
+/** 统计与单菜谱历史的会话缓存：跨页跳转时先给上一份真实数据，后台再刷新 */
+let sessionStats: Stats | null = null;
+const sessionHistories = new Map<string, RecipeHistory>();
+let sessionRange: { key: string; checkins: Checkin[] } | null = null;
 
 /** 兼容列：餐次与份量已从界面移除，表里仍保留，写入时补默认值 */
 const LEGACY_MEAL = '正餐';
@@ -39,6 +46,10 @@ const LEGACY_PORTION = '1 份';
 export function resetDataCaches() {
   sessionCheckins = [];
   sessionRecipes = [];
+  sessionTaxonomies = [];
+  sessionStats = null;
+  sessionHistories.clear();
+  sessionRange = null;
   emitDataEvent({ type: 'auth' });
 }
 
@@ -434,8 +445,11 @@ export function useCheckins(day: string = todayISO()) {
 
 /** 一个日期区间内的记录；今日页用它拉「接下来的安排」 */
 export function useCheckinRange(from: string, to: string) {
-  const [checkins, setCheckins] = useState<Checkin[]>([]);
-  const [loading, setLoading] = useState(true);
+  const key = `${from}|${to}`;
+  const [checkins, setCheckins] = useState<Checkin[]>(
+    sessionRange?.key === key ? sessionRange.checkins : []
+  );
+  const [loading, setLoading] = useState(sessionRange?.key !== key);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -446,9 +460,13 @@ export function useCheckinRange(from: string, to: string) {
       .order('day')
       .order('time')
       .order('id');
-    if (!error && data) setCheckins(data.map(toCheckin));
+    if (!error && data) {
+      const next = data.map(toCheckin);
+      sessionRange = { key, checkins: next };
+      setCheckins(next);
+    }
     setLoading(false);
-  }, [from, to]);
+  }, [from, to, key]);
 
   useEffect(() => {
     const timer = setTimeout(() => void load(), 0);
@@ -482,8 +500,8 @@ function streakFrom(active: Set<string>): number {
 const STATS_DAYS = 28;
 
 export function useStats() {
-  const [stats, setStats] = useState<Stats>(EMPTY_STATS);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<Stats>(sessionStats ?? EMPTY_STATS);
+  const [loading, setLoading] = useState(sessionStats === null);
 
   const load = useCallback(async () => {
     const today = todayISO();
@@ -507,7 +525,7 @@ export function useStats() {
     });
     const recipesRows = favoritesRes.data ?? [];
 
-    setStats({
+    const next: Stats = {
       streak: streakFrom(new Set(doneDays.map((r) => r.day))),
       days,
       totals: {
@@ -517,7 +535,9 @@ export function useStats() {
         activeDays: days.filter((d) => d.count > 0).length,
         planned: plannedRes.data?.length ?? 0,
       },
-    });
+    };
+    sessionStats = next;
+    setStats(next);
     setLoading(false);
   }, []);
 
@@ -543,15 +563,14 @@ export type TaxonomyResult = { ok: boolean; error?: string };
 
 export function useTaxonomies() {
   const { recipes } = useRecipes();
-  const [categories, setCategories] = useState<TaxonomyItem[]>([]);
-  const [tags, setTags] = useState<TaxonomyItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [rows, setRows] = useState<TaxonomyRow[]>(sessionTaxonomies);
+  const [loading, setLoading] = useState(sessionTaxonomies.length === 0);
 
   const load = useCallback(async () => {
     const uid = await supabase.auth.getSession().then(({ data }) => data.session?.user.id);
     if (!uid) {
-      setCategories([]);
-      setTags([]);
+      sessionTaxonomies = [];
+      setRows([]);
       setLoading(false);
       return;
     }
@@ -566,24 +585,16 @@ export function useTaxonomies() {
       setLoading(false);
       return;
     }
-    const catCount = new Map<string, number>();
-    const tagCount = new Map<string, number>();
-    for (const r of recipes) {
-      catCount.set(r.category, (catCount.get(r.category) ?? 0) + 1);
-      for (const t of r.tags) tagCount.set(t, (tagCount.get(t) ?? 0) + 1);
-    }
-    setCategories(
-      data
-        .filter((row) => row.kind === 'category')
-        .map((row) => ({ id: row.id, name: row.name, count: catCount.get(row.name) ?? 0 }))
-    );
-    setTags(
-      data
-        .filter((row) => row.kind === 'tag')
-        .map((row) => ({ id: row.id, name: row.name, count: tagCount.get(row.name) ?? 0 }))
-    );
+    const next = data.map((row) => ({
+      id: row.id,
+      kind: row.kind,
+      name: row.name,
+      sort_order: row.sort_order,
+    }));
+    sessionTaxonomies = next;
+    setRows(next);
     setLoading(false);
-  }, [recipes]);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => void load(), 0);
@@ -593,6 +604,33 @@ export function useTaxonomies() {
   useDataEvents((event) => {
     if (event.type === 'taxonomies' || event.type === 'auth') void load();
   });
+
+  /** 引用计数渲染时现算：菜谱数据后到也能立即反映，load 不必跟着 recipes 重跑 */
+  const catCount = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of recipes) m.set(r.category, (m.get(r.category) ?? 0) + 1);
+    return m;
+  }, [recipes]);
+  const tagCount = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of recipes) for (const t of r.tags) m.set(t, (m.get(t) ?? 0) + 1);
+    return m;
+  }, [recipes]);
+
+  const categories: TaxonomyItem[] = useMemo(
+    () =>
+      rows
+        .filter((r) => r.kind === 'category')
+        .map((r) => ({ id: r.id, name: r.name, count: catCount.get(r.name) ?? 0 })),
+    [rows, catCount]
+  );
+  const tags: TaxonomyItem[] = useMemo(
+    () =>
+      rows
+        .filter((r) => r.kind === 'tag')
+        .map((r) => ({ id: r.id, name: r.name, count: tagCount.get(r.name) ?? 0 })),
+    [rows, tagCount]
+  );
 
   const mutate = useCallback(async (run: () => Promise<void>): Promise<TaxonomyResult> => {
     try {
@@ -642,14 +680,14 @@ export function useTaxonomies() {
             .eq('user_id', uid)
             .eq('category', before.name);
         } else {
-          const { data: rows } = await supabase
+          const { data: list } = await supabase
             .from('recipes')
             .select('id, tags')
             .eq('user_id', uid)
             .contains('tags', [before.name]);
-          for (const row of rows ?? []) {
-            const tags = (row.tags ?? []).map((t: string) => (t === before.name ? nextName : t));
-            await supabase.from('recipes').update({ tags }).eq('id', row.id);
+          for (const row of list ?? []) {
+            const list2 = (row.tags ?? []).map((t: string) => (t === before.name ? nextName : t));
+            await supabase.from('recipes').update({ tags: list2 }).eq('id', row.id);
           }
         }
         emitDataEvent({ type: 'recipes' });
@@ -687,8 +725,10 @@ export function useTaxonomies() {
 /* ------------------------------------------------------------------ */
 
 export function useRecipeHistory(slug: string | undefined) {
-  const [data, setData] = useState<RecipeHistory>(EMPTY_HISTORY);
-  const [loading, setLoading] = useState(Boolean(slug));
+  const [data, setData] = useState<RecipeHistory>(
+    (slug && sessionHistories.get(slug)) || EMPTY_HISTORY
+  );
+  const [loading, setLoading] = useState(Boolean(slug) && !sessionHistories.has(slug ?? ''));
 
   const load = useCallback(async () => {
     if (!slug) {
@@ -710,12 +750,14 @@ export function useRecipeHistory(slug: string | undefined) {
     const all = rows.map(toCheckin);
     const history = all.filter((c) => !c.planned);
     const planned = all.filter((c) => c.planned);
-    setData({
+    const next: RecipeHistory = {
       cooked: history.length,
       lastCookedOn: history[0]?.day ?? null,
       history,
       planned,
-    });
+    };
+    sessionHistories.set(slug, next);
+    setData(next);
     setLoading(false);
   }, [slug]);
 

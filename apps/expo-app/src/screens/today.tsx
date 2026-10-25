@@ -91,17 +91,32 @@ export function TodayScreen() {
 
   const isToday = day === today;
   const isFuture = day > today;
-  const checkins = history.checkins;
-  const loading = history.loading;
 
-  /** 已实做与计划两组分开 */
+  /**
+   * 已落地视图：切日期时数据没到之前，时间线整块冻结在上一份渲染上，
+   * 数据到位后连同 swapKey 一次性换入——否则空日子会先滑入旧卡片、
+   * 响应回来再跳成空态，卡片「出现又消失」。
+   */
+  const [settled, setSettled] = useState<{ day: string; list: Checkin[] } | null>(null);
+  /* 数据落地就在渲染期记一份快照（React 官方的「props 变化时调整 state」写法） */
+  if (!history.loading && settled?.day !== day) {
+    setSettled({ day, list: history.checkins });
+  }
+  const view =
+    settled && history.loading && settled.day !== day ? settled : { day, list: history.checkins };
+  const viewDay = view.day;
+  const viewCheckins = view.list;
+  const viewIsToday = viewDay === today;
+  const viewIsFuture = viewDay > today;
+
+  /** 已实做与计划两组分开（按正在展示的那份数据） */
   const done = useMemo(
-    () => checkins.filter((c) => !c.planned).sort((a, b) => a.time.localeCompare(b.time)),
-    [checkins]
+    () => viewCheckins.filter((c) => !c.planned).sort((a, b) => a.time.localeCompare(b.time)),
+    [viewCheckins]
   );
   const planned = useMemo(
-    () => checkins.filter((c) => c.planned).sort((a, b) => a.time.localeCompare(b.time)),
-    [checkins]
+    () => viewCheckins.filter((c) => c.planned).sort((a, b) => a.time.localeCompare(b.time)),
+    [viewCheckins]
   );
   const upcomingPlans = useMemo(
     () =>
@@ -126,7 +141,8 @@ export function TodayScreen() {
   ).padStart(2, '0')}`;
 
   const hasEntries = done.length > 0 || planned.length > 0;
-  const showSkeleton = loading && !hasEntries;
+  /** 骨架只在首次加载（连上一份视图都没有）时出现；切日期靠冻结视图过渡 */
+  const showSkeleton = history.loading && !hasEntries && settled === null;
 
   /**
    * 餐段簇：条目先全局按时间排好，逐条落入所属餐段；
@@ -145,18 +161,18 @@ export function TodayScreen() {
         current = { group, items: [] };
         out.push(current);
       }
-      if (isToday && !nowPlaced && item.time > nowTime) {
+      if (viewIsToday && !nowPlaced && item.time > nowTime) {
         current.items.push({ kind: 'now' });
         nowPlaced = true;
       }
       current.items.push({ kind: 'entry', item });
     }
-    if (isToday && !nowPlaced && current) current.items.push({ kind: 'now' });
+    if (viewIsToday && !nowPlaced && current) current.items.push({ kind: 'now' });
     return out;
-  }, [done, planned, isToday, nowTime]);
+  }, [done, planned, viewIsToday, nowTime]);
 
-  const headLabel = isFuture ? '这天' : isToday ? '今日' : '当日';
-  const headSummary = isFuture
+  const headLabel = viewIsFuture ? '这天' : viewIsToday ? '今日' : '当日';
+  const headSummary = viewIsFuture
     ? planned.length > 0
       ? `${planned.length} 道安排`
       : '还没有安排'
@@ -186,7 +202,7 @@ export function TodayScreen() {
    * 日期切换方向：ISO 日期字符串的字典序就是时间序，
    * 所以往后一天新内容从右侧进、往前一天从左侧进。
    */
-  const dayDirection = useSequenceDirection(day);
+  const dayDirection = useSequenceDirection(viewDay);
 
   const dateLabel = isToday
     ? `${parseDay(day).getMonth() + 1} 月 ${parseDay(day).getDate()} 日 · 星期${WEEKDAYS[parseDay(day).getDay()]}`
@@ -256,7 +272,7 @@ export function TodayScreen() {
       />
 
       {/* 时间轴：按餐段分簇，整块内容跟着 day 换批 */}
-      <SwapIn swapKey={day} direction={dayDirection} style={{ rowGap: 24 }}>
+      <SwapIn swapKey={viewDay} direction={dayDirection} style={{ rowGap: 24 }}>
         {hasEntries || showSkeleton ? (
           <View className="px-5">
             <SectionHeader
@@ -284,7 +300,7 @@ export function TodayScreen() {
                           separated={i > 0}
                           isFuture={isFuture}
                           onConfirm={() => confirmPlan(node.item)}
-                          onPress={() => sheet.openCheckin({ day, existing: node.item })}
+                          onPress={() => sheet.openCheckin({ day: viewDay, existing: node.item })}
                         />
                       )
                     )}
@@ -301,15 +317,15 @@ export function TodayScreen() {
         ) : (
           /* 空状态：把「现在」的位置让给一句邀请 */
           <DayEmptyState
-            isToday={isToday}
-            isFuture={isFuture}
-            onRecord={() => sheet.openCheckin({ day })}
-            onPhoto={() => sheet.openPhotoCheckin({ day })}
+            isToday={viewIsToday}
+            isFuture={viewIsFuture}
+            onRecord={() => sheet.openCheckin({ day: viewDay })}
+            onPhoto={() => sheet.openPhotoCheckin({ day: viewDay })}
           />
         )}
 
         {/* 看今天时预告未来一周的安排，点进去就是那天 */}
-        {isToday && upcomingPlans.length > 0 ? (
+        {viewIsToday && upcomingPlans.length > 0 ? (
           <View>
             <View className="px-5">
               <SectionHeader

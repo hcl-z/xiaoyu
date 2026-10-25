@@ -71,8 +71,6 @@ export function Pill({
     className
   );
 
-  const activeShadow = active && tone === 'accent' ? elevationStyle.lift : undefined;
-
   const content = (
     <Body
       tone={active ? 'invert' : 'soft'}
@@ -84,15 +82,11 @@ export function Pill({
   );
 
   if (!onPress) {
-    return (
-      <View className={classes} style={activeShadow}>
-        {content}
-      </View>
-    );
+    return <View className={classes}>{content}</View>;
   }
 
   return (
-    <Animated.View style={[animatedStyle, activeShadow]}>
+    <Animated.View style={animatedStyle}>
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ selected: active }}

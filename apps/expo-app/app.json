@@ -2,7 +2,7 @@
   "expo": {
     "name": "daily +",
     "slug": "daily-plus",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "scheme": "dailyplus",
     "web": {
       "favicon": "./assets/favicon.png",

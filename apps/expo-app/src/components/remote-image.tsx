@@ -6,8 +6,7 @@
  * 所以这里把「取不到图」收敛成一个显式状态：失败就换调用方给的占位，
  * 界面形状不塌，也不必每个用到图的地方各写一遍 onError。
  *
- * src 的三种取值：Storage 路径（转公共 URL）、seed: 内置插画（本地资源，
- * 不走网络也不会失败）、空（占位）。
+ * src 的取值：Storage 路径（转公共 URL）、本地资源 id、空（占位）。
  */
 import { useState, type ReactNode } from 'react';
 import { Image, View, type ImageStyle, type StyleProp, type ViewStyle } from 'react-native';
@@ -46,7 +45,7 @@ export function RemoteImage({
   accessibilityLabel,
   onStatusChange,
 }: {
-  /** Storage 路径 / seed: 标识 / 本地资源 id / 空 */
+  /** Storage 路径 / 本地资源 id / 空 */
   src: ImageSrc;
   /** 同时作用于图片与占位，两者必须同尺寸 */
   style?: StyleProp<ViewStyle & ImageStyle>;

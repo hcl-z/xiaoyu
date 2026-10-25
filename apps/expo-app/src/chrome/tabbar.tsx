@@ -9,7 +9,7 @@
  * 让「换了一页」这件事在手指落点处有反馈，而不是等内容重绘。
  */
 import { useEffect, type ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -109,7 +109,7 @@ export function TabBar({
   className?: string;
 }) {
   const insets = useSafeAreaInsets();
-  const showIndicator = insets.bottom < SYSTEM_INDICATOR_MIN_INSET;
+  const showIndicator = Platform.OS === 'ios' && insets.bottom < SYSTEM_INDICATOR_MIN_INSET;
   const half = Math.ceil(items.length / 2);
 
   const tab = (item: TabItem) => {

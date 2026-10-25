@@ -3,7 +3,7 @@
  * ------------------------------------------------------------------
  * 认证交给 Supabase Auth：令牌持久化与自动刷新由 supabase-js 负责，
  * 这里只把「登录 / 注册 / 退出」翻译成应用内的会话语义。
- * 新账号注册成功后写入起步菜谱与默认分类标签。
+ * 新账号写入默认分类标签；菜谱不预置，从空白开始。
  */
 import {
   createContext,
@@ -17,7 +17,7 @@ import {
 
 import { supabase } from '@/data/supabase';
 import { resetDataCaches } from '@/data/store';
-import { STARTER_RECIPES, DEFAULT_CATEGORIES, DEFAULT_TAGS } from '@/data/starter';
+import { DEFAULT_CATEGORIES, DEFAULT_TAGS } from '@/data/starter';
 import type { SessionUser } from '@/data/types';
 
 export type SessionStatus = 'loading' | 'signedOut' | 'signedIn';
@@ -54,27 +54,9 @@ function toSessionUser(user: {
   };
 }
 
-/** 新账号的起步内容：6 道入门菜谱 + 默认分类 / 标签 */
-async function seedStarterContent(uid: string) {
-  const { error: recipeError } = await supabase.from('recipes').insert(
-    STARTER_RECIPES.map((r) => ({
-      user_id: uid,
-      slug: r.slug,
-      title: r.title,
-      subtitle: r.subtitle,
-      category: r.category,
-      minutes: r.minutes,
-      servings: r.servings,
-      image: r.image,
-      favorite: r.favorite,
-      cooked: 0,
-      tags: r.tags,
-      ingredients: r.ingredients,
-      steps: r.steps,
-    }))
-  );
-  if (recipeError) throw new Error(recipeError.message);
-  const { error: taxError } = await supabase.from('taxonomies').insert([
+/** 默认分类与标签：编辑器的选择项来自 taxonomies 表，空表会让新建菜谱没有可选分类 */
+async function seedDefaultTaxonomies(uid: string) {
+  const { error } = await supabase.from('taxonomies').insert([
     ...DEFAULT_CATEGORIES.map((name) => ({
       user_id: uid,
       kind: 'category',
@@ -83,18 +65,17 @@ async function seedStarterContent(uid: string) {
     })),
     ...DEFAULT_TAGS.map((name, i) => ({ user_id: uid, kind: 'tag', name, sort_order: i })),
   ]);
-  if (taxError) throw new Error(taxError.message);
+  if (error) throw new Error(error.message);
 }
 
-/** 空账号（一道菜谱都没有）补一份起步内容；已有内容的账号不动 */
-async function seedStarterContentIfEmpty(uid: string) {
+/** 邮箱确认后手动登录的账号会错过注册时的默认分类，这里补上 */
+async function seedDefaultTaxonomiesIfEmpty(uid: string) {
   const { count, error } = await supabase
-    .from('recipes')
+    .from('taxonomies')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', uid);
-  if (error) return;
-  if ((count ?? 0) > 0) return;
-  await seedStarterContent(uid);
+  if (error || (count ?? 0) > 0) return;
+  await seedDefaultTaxonomies(uid);
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
@@ -149,18 +130,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setUser(toSessionUser(authUser));
         setStatus('signedIn');
         /**
-         * 起步内容在成功进入后保证存在：
-         * 注册路径直接种；登录路径查一遍——邮箱确认后手动登录的账号
-         * 会错过注册时的种子，这里补上。失败不挡进入。
+         * 默认分类 / 标签在成功进入后保证存在；菜谱不预置，
+         * 新账号从空白开始，菜谱库用空态引导新建。
          */
         try {
-          if (path === 'signup') {
-            await seedStarterContent(authUser.id);
-          } else {
-            await seedStarterContentIfEmpty(authUser.id);
-          }
+          if (path === 'signup') await seedDefaultTaxonomies(authUser.id);
+          else await seedDefaultTaxonomiesIfEmpty(authUser.id);
         } catch {
-          // 起步内容只是锦上添花
+          // 默认分类只是锦上添花，失败不挡进入
         }
         return { ok: true };
       } catch {

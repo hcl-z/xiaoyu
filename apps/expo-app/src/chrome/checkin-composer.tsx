@@ -28,7 +28,7 @@ import {
   segmentDefaultTime,
   segmentOfTime,
 } from '@/domain/meal';
-import { color } from '@/theme';
+import { color, elevationStyle } from '@/theme';
 
 import { Alert, SuccessOverlay } from './overlays';
 import { Sheet } from './sheet';
@@ -205,19 +205,15 @@ export function CheckinComposer({
       <Sheet
         open={open}
         onClose={onClose}
-        title={
-          existing
-            ? isPlan
-              ? '修改计划'
-              : '修改记录'
-            : isPlan
-              ? `安排 · ${dayLabel}`
-              : `记一笔 · ${dayLabel}`
-        }
+        snapPoints={['50%']}
+        title={existing ? (isPlan ? '修改计划' : '修改记录') : isPlan ? '安排一道' : '记一笔'}
+        subtitle={dayLabel}
         footer={
-          <Button size="lg" block disabled={!canSave || busy} onPress={save}>
-            {phase === 'saving' ? '保存中…' : existing ? '更新' : isPlan ? '安排' : '记下'}
-          </Button>
+          <View style={elevationStyle.card}>
+            <Button size="lg" block disabled={!canSave || busy} onPress={save}>
+              {phase === 'saving' ? '保存中…' : existing ? '更新' : isPlan ? '安排' : '记下'}
+            </Button>
+          </View>
         }>
         <View style={{ rowGap: 12, paddingBottom: 12 }}>
           {existing?.photoPath ? (
@@ -247,13 +243,13 @@ export function CheckinComposer({
 
           {/* 大输入框：标题即输入，菜谱匹配是输入途中的建议 */}
           <View
-            className="flex-row items-center rounded-[18px]"
+            className="bg-card flex-row items-center rounded-[20px]"
             style={{
-              paddingHorizontal: 14,
-              minHeight: 60,
-              backgroundColor: color.fill,
+              paddingHorizontal: 16,
+              minHeight: 64,
               borderWidth: 1.5,
-              borderColor: inputFocused ? color.accent : 'transparent',
+              borderColor: inputFocused ? color.accent : color.hair,
+              ...(inputFocused ? elevationStyle.lift : undefined),
             }}>
             <View className="mr-3 shrink-0">
               <Icon name={mealOfTime(time).icon} size="xl" tone="muted" />
@@ -345,10 +341,9 @@ export function CheckinComposer({
                         accessibilityRole="button"
                         accessibilityLabel={`选 ${r.title}`}
                         onPress={() => setSlug(r.slug)}
-                        className="h-[38px] shrink-0 flex-row items-center gap-1.5 rounded-full px-3.5 active:opacity-70"
-                        style={{ backgroundColor: color.fill }}>
-                        <Icon name="utensils-crossed" size="md" tone="accent" />
-                        <Body size="text-[14px]" numberOfLines={1}>
+                        className="border-hair bg-card active:border-indigo/40 h-9 shrink-0 flex-row items-center gap-1.5 rounded-full border px-3.5">
+                        <Icon name="utensils-crossed" size="sm" tone="accent" />
+                        <Body size="text-[14px]" weight="font-medium" numberOfLines={1}>
                           {r.title}
                         </Body>
                       </Pressable>
@@ -363,9 +358,8 @@ export function CheckinComposer({
             )
           ) : null}
 
-          {/* 餐段药丸：选段即定时间；界面上不出现具体时刻。
-              选中态用墨色实心（iOS 分段的选中感），一眼可辨 */}
-          <View className="flex-row" style={{ gap: 8 }}>
+          {/* 餐段分段控件：灰底轨道 + 白色浮起卡片（iOS 分段语言），选段即定时间 */}
+          <View className="bg-fill flex-row rounded-full" style={{ padding: 3, gap: 2 }}>
             {COMPOSER_SEGMENTS.map((seg) => {
               const active = segmentOfTime(time) === seg.value;
               return (
@@ -378,16 +372,14 @@ export function CheckinComposer({
                     const next = segmentDefaultTime(seg.value, nowMinutes);
                     setTime(next ?? dateToTime(new Date()));
                   }}
-                  className="h-9 flex-1 items-center justify-center rounded-full"
-                  style={{
-                    backgroundColor: active ? color.ink : color.card,
-                    borderWidth: active ? 0 : 1,
-                    borderColor: color.hair,
-                  }}>
+                  className="h-[34px] flex-1 items-center justify-center rounded-full"
+                  style={
+                    active ? [elevationStyle.card, { backgroundColor: color.card }] : undefined
+                  }>
                   <Body
                     size="text-[14px]"
                     weight={active ? 'font-semibold' : 'font-medium'}
-                    tone={active ? 'invert' : 'muted'}>
+                    tone={active ? 'ink' : 'muted'}>
                     {seg.label}
                   </Body>
                 </Pressable>
@@ -396,7 +388,7 @@ export function CheckinComposer({
           </View>
 
           {noteOpen ? (
-            <View className="bg-fill rounded-[16px] px-4 py-1">
+            <View className="border-hair/70 bg-card rounded-[16px] border px-4 py-1">
               <TextArea
                 value={note}
                 onChange={setNote}

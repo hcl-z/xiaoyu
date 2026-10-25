@@ -8,7 +8,7 @@ import { useRouter } from 'expo-router';
 
 import { NavBar } from '@/chrome';
 import { Icon } from '@/components/icon';
-import { IconButton } from '@/components/button';
+import { Button, IconButton } from '@/components/button';
 import { Pill } from '@/components/controls';
 import { SearchField } from '@/components/inputs';
 import { RemoteImage, useImageStatus } from '@/components/remote-image';
@@ -128,44 +128,55 @@ export function RecipesScreen() {
             <SwapIn swapKey={resultKey}>
               <View className="px-5">
                 <Section>
-                  <EmptyState
-                    icon={<Icon name="search" size="xl" tone="accent" />}
-                    title="没有匹配的菜谱"
-                    description={
-                      query.trim()
-                        ? `没有找到与「${query.trim()}」相关的菜谱，菜名、标签与食材都试过了。`
-                        : activeCat === '收藏'
-                          ? '还没有收藏任何菜谱。'
-                          : '这个分类下还是空的。'
-                    }
-                    action={
-                      <View className="flex-row gap-2">
-                        {query.trim() || activeCat !== '全部' ? (
+                  {recipes.length === 0 && !query.trim() && activeCat === '全部' ? (
+                    <EmptyState
+                      icon={<Icon name="book-open" size="xl" tone="accent" />}
+                      title="菜谱库还是空的"
+                      description="从第一道常做的菜开始建：名字、用料、步骤，几分钟就好。"
+                      action={
+                        <Button onPress={() => router.push('/recipes/new')}>新建第一道菜</Button>
+                      }
+                    />
+                  ) : (
+                    <EmptyState
+                      icon={<Icon name="search" size="xl" tone="accent" />}
+                      title="没有匹配的菜谱"
+                      description={
+                        query.trim()
+                          ? `没有找到与「${query.trim()}」相关的菜谱，菜名、标签与食材都试过了。`
+                          : activeCat === '收藏'
+                            ? '还没有收藏任何菜谱。'
+                            : '这个分类下还是空的。'
+                      }
+                      action={
+                        <View className="flex-row gap-2">
+                          {query.trim() || activeCat !== '全部' ? (
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel="清除筛选"
+                              onPress={() => {
+                                setQuery('');
+                                setCat('全部');
+                              }}
+                              className="bg-fill active:bg-fill-deep rounded-control h-8 flex-row items-center px-3">
+                              <Body size="text-[13px]" weight="font-semibold">
+                                清除筛选
+                              </Body>
+                            </Pressable>
+                          ) : null}
                           <Pressable
                             accessibilityRole="button"
-                            accessibilityLabel="清除筛选"
-                            onPress={() => {
-                              setQuery('');
-                              setCat('全部');
-                            }}
-                            className="bg-fill active:bg-fill-deep rounded-control h-8 flex-row items-center px-3">
-                            <Body size="text-[13px]" weight="font-semibold">
-                              清除筛选
+                            accessibilityLabel="新建菜谱"
+                            onPress={() => router.push('/recipes/new')}
+                            className="bg-indigo active:bg-indigo-deep rounded-control h-8 flex-row items-center px-3">
+                            <Body size="text-[13px]" weight="font-semibold" tone="invert">
+                              新建菜谱
                             </Body>
                           </Pressable>
-                        ) : null}
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel="新建菜谱"
-                          onPress={() => router.push('/recipes/new')}
-                          className="bg-indigo active:bg-indigo-deep rounded-control h-8 flex-row items-center px-3">
-                          <Body size="text-[13px]" weight="font-semibold" tone="invert">
-                            新建菜谱
-                          </Body>
-                        </Pressable>
-                      </View>
-                    }
-                  />
+                        </View>
+                      }
+                    />
+                  )}
                 </Section>
               </View>
             </SwapIn>
