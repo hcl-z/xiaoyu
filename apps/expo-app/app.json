@@ -2,7 +2,7 @@
   "expo": {
     "name": "daily +",
     "slug": "daily-plus",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "scheme": "dailyplus",
     "web": {
       "favicon": "./assets/favicon.png",
@@ -39,7 +39,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#F6F7FB"
       },
       "package": "com.hclz.dailyplus",
       "permissions": [
